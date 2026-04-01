@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --gold: #ffd801;
+  --gold-dim: #ffd80180;
+  --blue: #096cfe;
+  --blue-dark: #05429d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: #000;
+  color: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,h2,h3,h4,h5 { font-family: 'Oswald', system-ui, sans-serif; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #ffd80150; }
+
+/* Cards */
+.card { @apply bg-[#0d0d0d] border border-[#1c1c1c] rounded-xl; }
+.card-hover { @apply hover:border-[#ffd80130] transition-colors; }
+
+/* Buttons */
+.btn-gold {
+  @apply bg-[#ffd801] hover:bg-[#ffe44d] active:bg-[#e6c400] text-black font-bold px-4 py-2 rounded-lg transition-all text-sm cursor-pointer;
+  font-family: 'Oswald', sans-serif;
+  letter-spacing: 0.04em;
+}
+.btn-blue {
+  @apply bg-[#096cfe] hover:bg-[#05429d] text-white font-bold px-4 py-2 rounded-lg transition-all text-sm;
+  font-family: 'Oswald', sans-serif;
+}
+.btn-outline {
+  @apply border border-[#2a2a2a] hover:border-[#ffd80150] text-gray-400 hover:text-[#ffd801] px-4 py-2 rounded-lg transition-all text-sm;
+}
+.btn-ghost {
+  @apply text-gray-500 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all text-sm;
+}
+
+/* Inputs */
+.input {
+  @apply bg-[#0d0d0d] border border-[#2a2a2a] text-white rounded-lg px-3 py-2.5 text-sm
+    focus:outline-none focus:border-[#ffd80160] focus:ring-1 focus:ring-[#ffd80120]
+    transition-all w-full placeholder-gray-700;
+  font-family: 'Inter', sans-serif;
+}
+.input:focus { @apply bg-[#111]; }
+
+/* Badges */
+.badge { @apply text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wider; }
+.badge-gold   { @apply badge bg-[#ffd80115] text-[#ffd801] border border-[#ffd80130]; }
+.badge-blue   { @apply badge bg-[#096cfe15] text-[#096cfe] border border-[#096cfe30]; }
+.badge-green  { @apply badge bg-green-500/10  text-green-400  border border-green-500/20; }
+.badge-purple { @apply badge bg-purple-500/10 text-purple-400 border border-purple-500/20; }
+.badge-red    { @apply badge bg-red-500/10    text-red-400    border border-red-500/20; }
+
+/* Section headers */
+.section-title {
+  font-family: 'Oswald', sans-serif;
+  @apply text-[#ffd801] font-black tracking-wider uppercase;
+}
+.section-sub {
+  @apply text-[#096cfe] text-sm;
+}
+
+/* Kanban */
+.kanban-col { @apply bg-[#0a0a0a] rounded-xl border border-[#1c1c1c] p-3; }
+.kanban-card {
+  @apply bg-[#111] rounded-lg border border-[#1c1c1c] p-3 mb-2
+    cursor-grab active:cursor-grabbing hover:border-[#ffd80130]
+    transition-all hover:shadow-lg;
+}
+
+/* Gold accent line */
+.gold-line { @apply h-px bg-gradient-to-r from-transparent via-[#ffd80150] to-transparent; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.25s ease forwards; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,216,1,0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(255,216,1,0); }
+}
+.pulse-gold { animation: pulse-gold 2s infinite; }
+
+/* Empty state */
+.empty-state {
+  @apply text-center py-24 text-gray-700 flex flex-col items-center gap-3;
+}
