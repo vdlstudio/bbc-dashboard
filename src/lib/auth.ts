@@ -15,7 +15,7 @@ export interface Session {
 }
 
 export async function createToken(session: Session): Promise<string> {
-  return new SignJWT(session as Record<string, unknown>)
+  return new SignJWT(session as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("7d")
     .sign(secret);
