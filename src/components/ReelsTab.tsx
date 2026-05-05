@@ -6,12 +6,23 @@ import GenerateButton from "./GenerateButton";
 import ContentActions from "./ContentActions";
 import { Film, ChevronDown, ChevronUp, Clipboard, Check } from "lucide-react";
 
+interface KeyFact {
+  bold: string;
+  detail: string;
+}
+
 interface ReelData {
   title: string;
-  subtitle: string;
+  category?: string;
+  hookQuestion?: string;
+  keyFacts?: KeyFact[];
+  closingQuestion?: string;
+  cta?: string;
   script: string;
   duration: string;
-  hooks: string[];
+  // legacy
+  subtitle?: string;
+  hooks?: string[];
   tags: string[];
 }
 
@@ -63,14 +74,14 @@ export default function ReelsTab({ session: _session }: { session: Session }) {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-[#ffd801]" style={{ fontFamily: 'Oswald, sans-serif' }}>Reels Ideas</h2>
-          <p className="text-[#096cfe] text-sm mt-0.5">Video scripts with title cards — click any to expand the full script</p>
+          <h2 className="text-xl font-bold text-[#ffd801]" style={{ fontFamily: 'Oswald, sans-serif' }}>Reels Scripts</h2>
+          <p className="text-[#096cfe] text-sm mt-0.5">Short-form video scripts — click to expand the full script</p>
         </div>
         <GenerateButton
           type="reel"
           onGenerated={handleGenerated}
           label="Generate Script"
-          placeholder="Topic (e.g. Bali investment tips)"
+          placeholder="Topic (e.g. Bali rental crisis 2026)"
         />
       </div>
 
@@ -91,9 +102,26 @@ export default function ReelsTab({ session: _session }: { session: Session }) {
         {items.map((item, idx) => {
           const data = JSON.parse(item.body) as ReelData;
           const tags = JSON.parse(item.tags || "[]") as string[];
+          const meta = JSON.parse(item.metadata || "{}");
           const isOpen = openScript === item.id;
           const grad = REEL_GRADIENTS[idx % REEL_GRADIENTS.length];
-          const downloadText = `BBC REEL SCRIPT\n${data.title} — ${data.subtitle}\nDuration: ${data.duration}\n\nHOOKS:\n${data.hooks.join("\n")}\n\nSCRIPT:\n${data.script}\n\nTags: ${tags.join(", ")}`;
+          const category = data.category || meta.category || "BBC REELS";
+          const duration = data.duration || meta.duration || "60s";
+
+          const scriptText = [
+            category + ":",
+            "",
+            data.hookQuestion ? data.hookQuestion : "",
+            "",
+            ...(data.keyFacts?.flatMap(f => [`[${f.bold}]`, f.detail, ""]) ?? []),
+            data.closingQuestion || "",
+            data.cta || "",
+            "",
+            "FULL SCRIPT:",
+            data.script,
+          ].join("\n");
+
+          const downloadText = `BBC REEL SCRIPT\n${data.title}\nCategory: ${category}\nDuration: ${duration}\n\n${scriptText}\n\nTags: ${tags.join(", ")}`;
 
           return (
             <div key={item.id} className="card overflow-hidden fade-in">
@@ -103,9 +131,16 @@ export default function ReelsTab({ session: _session }: { session: Session }) {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-[#ffd801] text-[10px] font-bold tracking-widest uppercase mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>BBC Reel · {data.duration}</p>
-                    <h3 className="text-3xl font-black text-white leading-tight" style={{ fontFamily: 'Oswald, sans-serif' }}>{data.title}</h3>
-                    <p className="text-gray-300 text-sm font-medium mt-1">{data.subtitle}</p>
+                    <p className="text-[#ffd801] text-[10px] font-bold tracking-widest uppercase mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>
+                      {category} · {duration}
+                    </p>
+                    <h3 className="text-2xl font-black text-white leading-tight" style={{ fontFamily: 'Oswald, sans-serif' }}>{data.title}</h3>
+                    {data.hookQuestion && (
+                      <p className="text-gray-300 text-sm font-medium mt-2 italic">&quot;{data.hookQuestion}&quot;</p>
+                    )}
+                    {data.subtitle && !data.hookQuestion && (
+                      <p className="text-gray-300 text-sm font-medium mt-1">{data.subtitle}</p>
+                    )}
                   </div>
                   <span className="text-gray-400 shrink-0">
                     {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -115,7 +150,23 @@ export default function ReelsTab({ session: _session }: { session: Session }) {
 
               {isOpen && (
                 <div className="p-4 border-t border-[#2a2a2a]">
-                  {data.hooks.length > 0 && (
+                  {/* Key Facts — new format */}
+                  {data.keyFacts && data.keyFacts.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-[#ffd801] text-xs font-bold mb-2 uppercase tracking-wider">Key Facts</p>
+                      <div className="space-y-2">
+                        {data.keyFacts.map((f, i) => (
+                          <div key={i} className="bg-[#111] rounded-lg px-3 py-2 border border-[#2a2a2a]">
+                            <p className="text-[#ffd801] text-xs font-bold">{f.bold}</p>
+                            <p className="text-gray-400 text-xs mt-0.5 leading-relaxed">{f.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legacy hooks format */}
+                  {data.hooks && data.hooks.length > 0 && !data.keyFacts && (
                     <div className="mb-4">
                       <p className="text-[#ffd801] text-xs font-bold mb-2 uppercase tracking-wider">Hook Options</p>
                       <div className="space-y-1">
@@ -125,6 +176,24 @@ export default function ReelsTab({ session: _session }: { session: Session }) {
                       </div>
                     </div>
                   )}
+
+                  {/* Engagement question */}
+                  {data.closingQuestion && (
+                    <div className="mb-4 bg-[#096cfe]/10 border border-[#096cfe]/30 rounded-lg px-3 py-2">
+                      <p className="text-[#096cfe] text-xs font-bold mb-0.5">Engagement Question</p>
+                      <p className="text-gray-300 text-xs">{data.closingQuestion}</p>
+                    </div>
+                  )}
+
+                  {/* CTA */}
+                  {data.cta && (
+                    <div className="mb-4 bg-[#ffd801]/10 border border-[#ffd801]/30 rounded-lg px-3 py-2">
+                      <p className="text-[#ffd801] text-xs font-bold mb-0.5">CTA</p>
+                      <p className="text-gray-300 text-xs">{data.cta}</p>
+                    </div>
+                  )}
+
+                  {/* Full script */}
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[#ffd801] text-xs font-bold uppercase tracking-wider">Full Script</p>
                     <button

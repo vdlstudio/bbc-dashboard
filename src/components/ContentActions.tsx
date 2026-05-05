@@ -22,6 +22,7 @@ export default function ContentActions({
 }: Props) {
   const [isFav, setIsFav] = useState(initialFav);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function toggleFavorite() {
     setLoading(true);
@@ -37,7 +38,7 @@ export default function ContentActions({
   }
 
   async function handleDelete() {
-    if (!confirm("Remove this content?")) return;
+    setDeleting(true);
     await fetch("/api/content", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -80,8 +81,9 @@ export default function ContentActions({
       )}
       <button
         onClick={handleDelete}
+        disabled={deleting}
         title="Delete"
-        className="p-1.5 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+        className="p-1.5 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
       >
         <Trash2 size={14} />
       </button>

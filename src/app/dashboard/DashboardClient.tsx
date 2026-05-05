@@ -10,12 +10,13 @@ import FavoritesTab from "@/components/FavoritesTab";
 import TaskBoardTab from "@/components/TaskBoardTab";
 import IdeasTab from "@/components/IdeasTab";
 import SettingsTab from "@/components/SettingsTab";
+import AnalyticsTab from "@/components/AnalyticsTab";
 import {
   Smartphone, Layers, Film, BarChart2, Heart,
-  Kanban, Lightbulb, Settings, LogOut, Menu, Clock,
+  Kanban, Lightbulb, Settings, LogOut, Menu, Clock, TrendingUp,
 } from "lucide-react";
 
-type Tab = "stories" | "carousel" | "reels" | "reports" | "favorites" | "tasks" | "ideas" | "settings";
+type Tab = "stories" | "carousel" | "reels" | "reports" | "favorites" | "tasks" | "ideas" | "analytics" | "settings";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "stories",   label: "Stories",    icon: <Smartphone size={15} /> },
@@ -25,6 +26,7 @@ const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "favorites", label: "Favorites",  icon: <Heart size={15} /> },
   { id: "tasks",     label: "Task Board", icon: <Kanban size={15} /> },
   { id: "ideas",     label: "Ideas",      icon: <Lightbulb size={15} /> },
+  { id: "analytics", label: "Analytics",  icon: <TrendingUp size={15} /> },
   { id: "settings",  label: "Settings",   icon: <Settings size={15} /> },
 ];
 
@@ -42,13 +44,12 @@ export default function DashboardClient({ session }: { session: Session }) {
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? "w-56" : "w-14"} transition-all duration-200 bg-[#080808] border-r border-[#181818] flex flex-col shrink-0`}>
         {/* Brand */}
-        <div className={`border-b border-[#181818] flex items-center ${sidebarOpen ? "px-4 py-4 gap-3" : "px-0 py-4 justify-center"}`}>
+        <div className={`border-b border-[#181818] flex items-center ${sidebarOpen ? "px-4 py-3 gap-3" : "px-0 py-3 justify-center"}`}>
           {sidebarOpen ? (
-            <div>
-              <p className="text-[#ffd801] font-black text-sm leading-tight tracking-wider" style={{ fontFamily: 'Oswald, sans-serif' }}>
-                BALI BUSINESS CLUB
-              </p>
-              <p className="text-[#096cfe] text-[9px] tracking-[0.2em] uppercase mt-0.5">Marketing Team</p>
+            <div className="flex flex-col items-start gap-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-white.svg" alt="Bali Business Club" className="h-7 w-auto" style={{ filter: 'brightness(0) invert(1)' }} />
+              <p className="text-[#096cfe] text-[9px] tracking-[0.2em] uppercase">Marketing Team</p>
             </div>
           ) : (
             <div className="w-8 h-8 rounded-lg bg-[#ffd801] flex items-center justify-center font-black text-black text-sm">B</div>
@@ -118,6 +119,7 @@ export default function DashboardClient({ session }: { session: Session }) {
           {activeTab === "favorites" && <FavoritesTab session={session} />}
           {activeTab === "tasks"     && <TaskBoardTab session={session} />}
           {activeTab === "ideas"     && <IdeasTab session={session} />}
+          {activeTab === "analytics" && <AnalyticsTab session={session} />}
           {activeTab === "settings"  && <SettingsTab session={session} />}
         </div>
       </main>

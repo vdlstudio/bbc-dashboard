@@ -12,28 +12,59 @@ export async function POST(req: NextRequest) {
 
   // Check API key is configured
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "your-api-key-here" || !apiKey.startsWith("sk-")) {
+  if (!apiKey || apiKey.trim() === "" || apiKey === "your-api-key-here") {
     return NextResponse.json(
       { error: "Anthropic API key not configured. Go to Settings and add your ANTHROPIC_API_KEY." },
       { status: 503 }
     );
   }
 
-  const { type, topic, count } = await req.json();
+  // Also allow ping check from Settings tab
+  const body = await req.json();
+  if (body.type === "ping") {
+    return NextResponse.json({ ok: true, configured: true });
+  }
+
+  const { type, topic, count } = body;
 
   try {
     if (type === "story") {
-      const data = await generateStory(topic);
-      const content = await prisma.content.create({
-        data: {
-          type: "story",
-          title: data.title,
-          body: JSON.stringify(data),
-          tags: JSON.stringify(data.tags),
-          metadata: JSON.stringify({ backgroundTheme: data.backgroundTheme }),
-        },
-      });
-      return NextResponse.json({ content: { ...content, isFavorite: false } });
+      const storyCount = Math.min(Math.max(parseInt(count ?? "1") || 1, 1), 10);
+      if (storyCount === 1) {
+        const data = await generateStory(topic);
+        const content = await prisma.content.create({
+          data: {
+            type: "story",
+            title: data.headline,
+            body: JSON.stringify(data),
+            tags: JSON.stringify(data.tags),
+            metadata: JSON.stringify({ category: data.category, source: data.source }),
+          },
+        });
+        return NextResponse.json({ content: { ...content, isFavorite: false } });
+      } else {
+        // Batch generation — generate all in parallel
+        const results = await Promise.allSettled(
+          Array.from({ length: storyCount }, () => generateStory(topic))
+        );
+        const contents = [];
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            const data = result.value;
+            const content = await prisma.content.create({
+              data: {
+                type: "story",
+                title: data.headline,
+                body: JSON.stringify(data),
+                tags: JSON.stringify(data.tags),
+                metadata: JSON.stringify({ category: data.category, source: data.source }),
+              },
+            });
+            contents.push({ ...content, isFavorite: false });
+          }
+        }
+        return NextResponse.json({ contents });
+      }
     }
 
     if (type === "carousel") {
@@ -57,14 +88,26 @@ export async function POST(req: NextRequest) {
           title: data.title,
           body: JSON.stringify(data),
           tags: JSON.stringify(data.tags),
-          metadata: JSON.stringify({ subtitle: data.subtitle, duration: data.duration }),
+          metadata: JSON.stringify({ category: data.category, duration: data.duration }),
         },
       });
       return NextResponse.json({ content: { ...content, isFavorite: false } });
     }
 
     if (type === "report") {
-      const data = await generateReport(topic);
+      let data;
+      let lastErr: unknown;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          data = await generateReport(topic);
+          break;
+        } catch (e) {
+          lastErr = e;
+          console.error(`Report generation attempt ${attempt} failed:`, e instanceof Error ? e.message : e);
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+      if (!data) throw lastErr;
       const content = await prisma.content.create({
         data: {
           type: "report",
@@ -92,8 +135,11 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Generate error:", err);
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("api_key")) {
+    if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("api_key") || msg.includes("authentication")) {
       return NextResponse.json({ error: "Invalid Anthropic API key. Check your ANTHROPIC_API_KEY." }, { status: 503 });
+    }
+    if (msg.includes("JSON") || msg.includes("json") || msg.includes("Unexpected token") || msg.includes("SyntaxError")) {
+      return NextResponse.json({ error: "AI returned unexpected format. Please try again." }, { status: 500 });
     }
     return NextResponse.json({ error: `AI generation failed: ${msg}` }, { status: 500 });
   }

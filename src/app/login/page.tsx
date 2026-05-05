@@ -6,7 +6,7 @@ import { Loader2, LogIn } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export default function LoginPage() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
     setLoading(false);
@@ -36,13 +36,12 @@ export default function LoginPage() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#ffd801]/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-sm relative z-10">
-        {/* Logo text */}
+        {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex flex-col items-center gap-1">
-            <span className="text-4xl font-black tracking-wider text-[#ffd801]" style={{ fontFamily: 'Oswald, sans-serif', letterSpacing: '0.08em' }}>
-              BALI BUSINESS CLUB
-            </span>
-            <div className="flex items-center gap-2 mt-1">
+          <div className="inline-flex flex-col items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-white.svg" alt="Bali Business Club" className="h-16 w-auto" style={{ filter: 'brightness(0) invert(1)' }} />
+            <div className="flex items-center gap-2">
               <div className="h-px w-12 bg-[#096cfe]/50" />
               <span className="text-[#096cfe] text-xs tracking-[0.25em] uppercase font-medium">Marketing Team</span>
               <div className="h-px w-12 bg-[#096cfe]/50" />
@@ -59,13 +58,14 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1.5 uppercase tracking-widest">Email</label>
+              <label className="block text-[10px] text-gray-500 mb-1.5 uppercase tracking-widest">Username</label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@balibusinessclub.com"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
                 required
+                autoComplete="username"
                 className="input"
               />
             </div>
@@ -77,6 +77,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                autoComplete="current-password"
                 className="input"
               />
             </div>

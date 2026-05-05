@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@/lib/auth";
 import ContentActions from "./ContentActions";
-import { Smartphone, Layers, Film, BarChart2, Heart } from "lucide-react";
+import { Smartphone, Layers, Film, BarChart2, Heart, ClipboardList, Check } from "lucide-react";
 
 interface ContentItem {
   id: string;
@@ -32,6 +32,23 @@ const TYPE_COLORS: Record<string, string> = {
 export default function FavoritesTab({ session: _session }: { session: Session }) {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addedTask, setAddedTask] = useState<string | null>(null);
+
+  async function addToTaskBoard(item: ContentItem) {
+    const typeLabel = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+    await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: `[${typeLabel}] ${item.title}`,
+        description: `Content to publish — ${typeLabel} generated on ${new Date(item.createdAt).toLocaleDateString()}`,
+        priority: "medium",
+        status: "todo",
+      }),
+    });
+    setAddedTask(item.id);
+    setTimeout(() => setAddedTask(null), 2500);
+  }
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -94,16 +111,27 @@ export default function FavoritesTab({ session: _session }: { session: Session }
                   </div>
                 </div>
               </div>
-              <ContentActions
-                contentId={item.id}
-                isFavorite={true}
-                onFavoriteChange={(isFav) => {
-                  if (!isFav) setItems((prev) => prev.filter((i) => i.id !== item.id));
-                }}
-                onDelete={fetchItems}
-                downloadData={item.body}
-                downloadName={`bbc-${item.type}-${item.id}.txt`}
-              />
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => addToTaskBoard(item)}
+                  className="btn-outline text-xs flex items-center gap-1.5"
+                  title="Add to Task Board"
+                >
+                  {addedTask === item.id
+                    ? <><Check size={11} className="text-green-400" />Added!</>
+                    : <><ClipboardList size={11} />Add to Tasks</>}
+                </button>
+                <ContentActions
+                  contentId={item.id}
+                  isFavorite={true}
+                  onFavoriteChange={(isFav) => {
+                    if (!isFav) setItems((prev) => prev.filter((i) => i.id !== item.id));
+                  }}
+                  onDelete={fetchItems}
+                  downloadData={item.body}
+                  downloadName={`bbc-${item.type}-${item.id}.txt`}
+                />
+              </div>
             </div>
           );
         })}

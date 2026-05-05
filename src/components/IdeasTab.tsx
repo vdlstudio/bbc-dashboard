@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@/lib/auth";
-import { Mic, Film, Lightbulb, ChevronUp, Sparkles, Plus, Loader2 } from "lucide-react";
+import { Mic, Film, Lightbulb, Sparkles, Plus, Loader2, Trash2, ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface Idea {
   id: string;
@@ -10,6 +10,7 @@ interface Idea {
   title: string;
   body: string;
   votes: number;
+  dislikes: number;
   createdAt: string;
 }
 
@@ -32,22 +33,58 @@ export default function IdeasTab({ session: _session }: { session: Session }) {
   const [showNew, setShowNew] = useState(false);
   const [newIdea, setNewIdea] = useState({ category: "podcast", title: "", body: "" });
   const [generating, setGenerating] = useState(false);
+  const [votingId, setVotingId] = useState<string | null>(null);
 
   const fetchIdeas = useCallback(async () => {
     setLoading(true);
     const url = filter !== "all" ? `/api/ideas?category=${filter}` : "/api/ideas";
     const res = await fetch(url);
     const data = await res.json();
-    setIdeas(data.ideas ?? []);
+    // Ensure dislikes field exists (for older records)
+    const ideas = (data.ideas ?? []).map((i: Idea) => ({ ...i, dislikes: i.dislikes ?? 0 }));
+    setIdeas(ideas);
     setLoading(false);
   }, [filter]);
 
   useEffect(() => { fetchIdeas(); }, [fetchIdeas]);
 
-  async function vote(id: string) {
-    const res = await fetch(`/api/ideas/${id}/vote`, { method: "POST" });
-    const data = await res.json();
-    setIdeas((prev) => prev.map((i) => (i.id === id ? data.idea : i)).sort((a, b) => b.votes - a.votes));
+  async function like(id: string) {
+    if (votingId) return;
+    setVotingId(id + "_like");
+    try {
+      const res = await fetch(`/api/ideas/${id}/vote`, { method: "POST" });
+      const data = await res.json();
+      if (data.idea) {
+        setIdeas((prev) =>
+          prev.map((i) => i.id === id ? { ...i, votes: data.idea.votes ?? i.votes + 1, dislikes: data.idea.dislikes ?? i.dislikes } : i)
+            .sort((a, b) => (b.votes - b.dislikes) - (a.votes - a.dislikes))
+        );
+      }
+    } finally {
+      setVotingId(null);
+    }
+  }
+
+  async function dislike(id: string) {
+    if (votingId) return;
+    setVotingId(id + "_dislike");
+    try {
+      const res = await fetch(`/api/ideas/${id}/dislike`, { method: "POST" });
+      const data = await res.json();
+      if (data.idea) {
+        setIdeas((prev) =>
+          prev.map((i) => i.id === id ? { ...i, dislikes: data.idea.dislikes ?? i.dislikes + 1, votes: data.idea.votes ?? i.votes } : i)
+            .sort((a, b) => (b.votes - b.dislikes) - (a.votes - a.dislikes))
+        );
+      }
+    } finally {
+      setVotingId(null);
+    }
+  }
+
+  async function deleteIdea(id: string) {
+    await fetch(`/api/ideas/${id}`, { method: "DELETE" });
+    setIdeas((prev) => prev.filter((i) => i.id !== id));
   }
 
   async function addIdea() {
@@ -58,7 +95,7 @@ export default function IdeasTab({ session: _session }: { session: Session }) {
       body: JSON.stringify(newIdea),
     });
     const data = await res.json();
-    setIdeas((prev) => [data.idea, ...prev]);
+    setIdeas((prev) => [{ ...data.idea, dislikes: 0 }, ...prev]);
     setNewIdea({ category: "podcast", title: "", body: "" });
     setShowNew(false);
   }
@@ -72,7 +109,7 @@ export default function IdeasTab({ session: _session }: { session: Session }) {
     });
     const data = await res.json();
     if (data.ideas) {
-      setIdeas((prev) => [...data.ideas, ...prev]);
+      setIdeas((prev) => [...data.ideas.map((i: Idea) => ({ ...i, dislikes: 0 })), ...prev]);
     }
     setGenerating(false);
   }
@@ -171,31 +208,83 @@ export default function IdeasTab({ session: _session }: { session: Session }) {
       )}
 
       <div className="space-y-3">
-        {filtered.map((idea) => (
-          <div key={idea.id} className="card p-4 flex items-start gap-4 fade-in">
-            <button
-              onClick={() => vote(idea.id)}
-              className="flex flex-col items-center gap-0.5 shrink-0 group"
-            >
-              <div className="w-9 h-9 rounded-xl border border-[#2a2a2a] group-hover:border-[#ffd801] bg-[#111] flex flex-col items-center justify-center transition-colors">
-                <ChevronUp size={12} className="text-[#ffd801]" />
-                <span className="text-sm font-bold text-white" style={{ fontFamily: 'Oswald, sans-serif' }}>{idea.votes}</span>
+        {filtered.map((idea) => {
+          const score = idea.votes - idea.dislikes;
+          const isLiking = votingId === idea.id + "_like";
+          const isDisliking = votingId === idea.id + "_dislike";
+
+          return (
+            <div key={idea.id} className="card p-4 flex items-start gap-4 fade-in">
+              {/* Like / Dislike column */}
+              <div className="flex flex-col items-center gap-1 shrink-0">
+                {/* Score */}
+                <div
+                  className={`text-sm font-black w-9 text-center ${
+                    score > 0 ? "text-[#ffd801]" : score < 0 ? "text-red-400" : "text-gray-500"
+                  }`}
+                  style={{ fontFamily: 'Oswald, sans-serif' }}
+                >
+                  {score > 0 ? `+${score}` : score}
+                </div>
+
+                {/* Thumbs Up */}
+                <button
+                  onClick={() => like(idea.id)}
+                  disabled={!!votingId}
+                  title="Like"
+                  className={`w-9 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                    isLiking
+                      ? "border-[#ffd801] bg-[#ffd801]/20 text-[#ffd801]"
+                      : "border-[#2a2a2a] bg-[#111] text-gray-500 hover:border-[#ffd801] hover:text-[#ffd801]"
+                  } disabled:opacity-40`}
+                >
+                  <ThumbsUp size={13} />
+                </button>
+
+                {/* Thumbs Down */}
+                <button
+                  onClick={() => dislike(idea.id)}
+                  disabled={!!votingId}
+                  title="Dislike"
+                  className={`w-9 h-8 rounded-lg border flex items-center justify-center transition-all ${
+                    isDisliking
+                      ? "border-red-500 bg-red-500/20 text-red-400"
+                      : "border-[#2a2a2a] bg-[#111] text-gray-500 hover:border-red-500 hover:text-red-400"
+                  } disabled:opacity-40`}
+                >
+                  <ThumbsDown size={13} />
+                </button>
+
+                {/* Counts */}
+                <div className="text-[9px] text-gray-600 text-center leading-tight">
+                  <div className="text-green-500/70">{idea.votes}</div>
+                  <div className="text-red-500/70">{idea.dislikes}</div>
+                </div>
               </div>
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`badge ${CAT_COLORS[idea.category]} text-[10px] flex items-center gap-1`}>
-                  {CAT_ICONS[idea.category]}{idea.category}
-                </span>
-                <span className="text-[10px] text-gray-600">
-                  {new Date(idea.createdAt).toLocaleDateString()}
-                </span>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`badge ${CAT_COLORS[idea.category]} text-[10px] flex items-center gap-1`}>
+                    {CAT_ICONS[idea.category]}{idea.category}
+                  </span>
+                  <span className="text-[10px] text-gray-600">
+                    {new Date(idea.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <h3 className="font-semibold text-sm text-white" style={{ fontFamily: 'Oswald, sans-serif' }}>{idea.title}</h3>
+                {idea.body && <p className="text-gray-400 text-xs mt-1 leading-relaxed">{idea.body}</p>}
               </div>
-              <h3 className="font-semibold text-sm text-white" style={{ fontFamily: 'Oswald, sans-serif' }}>{idea.title}</h3>
-              {idea.body && <p className="text-gray-400 text-xs mt-1 leading-relaxed">{idea.body}</p>}
+
+              <button
+                onClick={() => deleteIdea(idea.id)}
+                className="shrink-0 text-gray-600 hover:text-red-400 transition-colors p-1"
+                title="Delete idea"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

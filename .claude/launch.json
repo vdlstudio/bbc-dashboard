@@ -3,9 +3,14 @@
   "configurations": [
     {
       "name": "bbc-dashboard",
-      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
-      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--port", "3001"],
-      "port": 3001
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--port", "3003"],
+      "port": 3003,
+      "env": {
+        "ANTHROPIC_API_KEY": "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",
+        "DATABASE_URL": "file:C:/Users/vince/bbc.db",
+        "JWT_SECRET": "bbc-dashboard-secret-change-in-production-2026"
+      }
     }
   ]
 }
