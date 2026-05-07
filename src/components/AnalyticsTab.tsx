@@ -8,11 +8,11 @@ import {
   Lightbulb, CheckCircle, AlertCircle, ArrowUp, ArrowDown, Calendar,
 } from "lucide-react";
 
-// ─── Historical data from BBC spreadsheet (Oct'23 → Feb'25) ──────────────────
+// ─── Historical data from BBC spreadsheet (Oct'24 → Feb'26) ──────────────────
 const MONTHS = [
-  "Oct'23","Nov'23","Dec'23","Jan'24","Feb'24","Mar'24","Apr'24",
-  "May'24","Jun'24","Jul'24","Aug'24","Sep'24","Oct'24","Nov'24",
-  "Dec'24","Jan'25","Feb'25",
+  "Oct'24","Nov'24","Dec'24","Jan'25","Feb'25","Mar'25","Apr'25",
+  "May'25","Jun'25","Jul'25","Aug'25","Sep'25","Oct'25","Nov'25",
+  "Dec'25","Jan'26","Feb'26",
 ];
 
 const FACEBOOK = {
@@ -95,6 +95,7 @@ interface SheetsRow {
   igNewFollowers: number;
   liFollowers: number;
   liImpressions: number;
+  liReactions: number;
   liNewFollowers: number;
   ytSubs: number;
   ytViews: number;
@@ -721,9 +722,7 @@ export default function AnalyticsTab({ session: _session }: { session: Session }
       },
       linkedin: {
         impressions:    rows.map(r => r.liImpressions || 0),
-        reactions:      rows.length === LINKEDIN.reactions.length
-          ? LINKEDIN.reactions
-          : rows.map(() => 0),
+        reactions:      rows.map(r => r.liReactions || 0),
         newFollowers:   rows.map(r => r.liNewFollowers || 0),
         totalFollowers: rows.map(r => r.liFollowers || 0),
       },
@@ -854,7 +853,7 @@ ${ytData.recentVideos.length ? `
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-[#ffd801]" style={{ fontFamily: 'Oswald, sans-serif' }}>Analytics</h2>
-          <p className="text-[#096cfe] text-sm mt-0.5">Meta · YouTube · LinkedIn — data through {DM[DM.length - 1] ?? "Feb'25"}</p>
+          <p className="text-[#096cfe] text-sm mt-0.5">Meta · YouTube · LinkedIn — data through {DM[DM.length - 1] ?? "Mar'26"}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Export type toggle */}

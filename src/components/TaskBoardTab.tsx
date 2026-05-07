@@ -29,7 +29,7 @@ interface UserItem {
 }
 
 const COLUMNS = [
-  { id: "todo",       label: "To Do",      color: "text-gray-400",    bg: "#2a2a2a",  dot: "#888" },
+  { id: "todo",       label: "To Do",      color: "text-white",       bg: "#000000",  dot: "#ffffff" },
   { id: "inprogress", label: "In Progress", color: "text-[#096cfe]",  bg: "#05429d22", dot: "#096cfe" },
   { id: "review",     label: "To Review",  color: "text-[#ffd801]",   bg: "#ffd80111", dot: "#ffd801" },
   { id: "done",       label: "Completed",  color: "text-green-400",   bg: "#16a34a11", dot: "#4ade80" },

@@ -49,27 +49,41 @@ export async function generateStory(topic?: string): Promise<{
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
+  const searchQuery = topic
+    ? `${topic} Bali Indonesia 2025 2026 news`
+    : `Bali Indonesia property investment tourism news ${now.getFullYear()}`;
+
   const prompt = topic
-    ? `Create a BBC Instagram Story breaking news card about: ${topic}. Frame this as if it is breaking news from the past 48 hours (as of ${dateStr}).`
-    : `Create a BBC Instagram Story breaking news card about a recent Bali or Indonesia business/investment/news development. Frame this as if it is breaking news from the past 48 hours (as of ${dateStr}).`;
+    ? `Use web_search to find the most interesting RECENT news about: ${topic} (Bali/Indonesia context). Then create a BBC Instagram Story breaking news card from the most compelling real story you find.`
+    : `Use web_search to find the most interesting RECENT Bali or Indonesia business/investment/real estate news from the past few weeks. Pick the most compelling and timely story, then create a BBC Instagram Story breaking news card from it.`;
 
   const msg = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 500,
+    max_tokens: 800,
+    tools: [
+      {
+        type: "web_search_20250305" as const,
+        name: "web_search",
+      } as { type: "web_search_20250305"; name: "web_search" },
+    ],
     messages: [
       {
         role: "user",
         content: `${BBC_BRAND}
 
+Today: ${dateStr}
+
 ${prompt}
 
-BBC Instagram Stories look like breaking news graphics. Rules:
+Search query suggestion: "${searchQuery}"
+
+After searching, pick the MOST INTERESTING and TIMELY story. BBC Instagram Stories look like breaking news graphics. Rules:
 - Category badge is ALWAYS "NEWS" — never change this
 - A bold yellow HEADLINE (1-2 lines, ALL CAPS, punchy and specific — the breaking hook)
 - A white BODY TEXT (MAXIMUM 20 words — one sharp sentence with one key stat. Very short to fit on card.)
 - A source attribution (e.g. "THE BALI SUN", "COLLIERS INTERNATIONAL", "BPS INDONESIA", "BANK INDONESIA", "ANTARA", "REUTERS")
 
-This is BREAKING NEWS from the last 48 hours. Make it feel urgent and timely. Use 2025-2026 data.
+This is BREAKING NEWS. Make it feel urgent and timely. Only use real, recent 2025-2026 data that you actually found.
 Topics: Bali property prices, villa ROI, tourism arrivals, land prices (Canggu, Kedungu, Uluwatu), Indonesia economy, new developments, regulations, infrastructure.
 
 Example headlines: "BALI VILLA YIELDS DOUBLED LONDON RETURNS IN 2025", "INDONESIA GDP GREW 5.11% IN 2025", "CANGGU LAND PRICES UP 40% IN 3 YEARS"
@@ -87,7 +101,9 @@ Return ONLY valid JSON (no markdown, no code fences):
     ],
   });
 
-  const text = (msg.content[0] as { text: string }).text;
+  // Handle multi-block response (web search + text)
+  const textBlock = msg.content.filter(b => b.type === "text").at(-1);
+  const text = textBlock ? (textBlock as { type: "text"; text: string }).text : "";
   return parseJSON(text);
 }
 
