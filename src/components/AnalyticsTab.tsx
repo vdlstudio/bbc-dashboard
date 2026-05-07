@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Session } from "@/lib/auth";
 import {
   TrendingUp, TrendingDown, Users, Eye, Heart,
@@ -629,7 +629,7 @@ export default function AnalyticsTab({ session: _session }: { session: Session }
   const [sheetsData, setSheetsData] = useState<SheetsData | null>(null);
   const [sheetsLoading, setSheetsLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [exportMonth, setExportMonth] = useState(MONTHS.length - 1);
+  const [exportMonth, setExportMonth] = useState(-1); // -1 means "last available"
   const [exportType, setExportType] = useState<"monthly" | "weekly">("monthly");
   const [exportWeekDate, setExportWeekDate] = useState("");
   const [ytFromDate, setYtFromDate] = useState("");
@@ -694,19 +694,70 @@ export default function AnalyticsTab({ session: _session }: { session: Session }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ─── Dynamic display data: prefer Sheets data if available ───────────────────
+  const displayData = useMemo(() => {
+    if (!sheetsData?.rows?.length || sheetsData.rows.length < 3) {
+      return {
+        months: MONTHS,
+        facebook: FACEBOOK,
+        instagram: INSTAGRAM,
+        linkedin: LINKEDIN,
+        youtube: YOUTUBE_HIST,
+      };
+    }
+    const rows = sheetsData.rows;
+    return {
+      months: rows.map(r => r.month),
+      facebook: {
+        reach:          rows.map(r => r.fbViews || 0),
+        interactions:   rows.map(r => r.fbInteractions || 0),
+        newFollowers:   rows.map(r => r.fbNewFollowers || 0),
+        totalFollowers: rows.map(r => r.fbFollowers || 0),
+      },
+      instagram: {
+        views:          rows.map(r => r.igViews || 0),
+        newFollowers:   rows.map(r => r.igNewFollowers || 0),
+        totalFollowers: rows.map(r => r.igFollowers || 0),
+      },
+      linkedin: {
+        impressions:    rows.map(r => r.liImpressions || 0),
+        reactions:      rows.length === LINKEDIN.reactions.length
+          ? LINKEDIN.reactions
+          : rows.map(() => 0),
+        newFollowers:   rows.map(r => r.liNewFollowers || 0),
+        totalFollowers: rows.map(r => r.liFollowers || 0),
+      },
+      youtube: {
+        views:          rows.map(r => r.ytViews || 0),
+        watchHours:     rows.map(r => r.ytWatchHours || 0),
+        newSubs:        rows.map(r => r.ytNewSubs || 0),
+        totalSubs:      rows.map(r => r.ytSubs || 0),
+      },
+    };
+  }, [sheetsData]);
+
+  // Shorthand aliases used throughout JSX
+  const DM  = displayData.months;
+  const DFB = displayData.facebook;
+  const DIG = displayData.instagram;
+  const DLI = displayData.linkedin;
+  const DYT = displayData.youtube;
+
   function exportMonthlyReport() {
-    const html = generateMonthlyReportHTML(MONTHS[exportMonth], exportMonth);
+    const idx = exportMonth === -1 ? DM.length - 1 : Math.min(exportMonth, DM.length - 1);
+    const html = generateMonthlyReportHTML(DM[idx], idx);
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `bbc-social-report-${MONTHS[exportMonth].replace("'", "-")}.html`;
+    a.download = `bbc-social-report-${DM[idx].replace("'", "-")}.html`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   function printMonthlyReport() {
-    const html = generateMonthlyReportHTML(MONTHS[exportMonth], exportMonth);
+    const idx = exportMonth === -1 ? DM.length - 1 : Math.min(exportMonth, DM.length - 1);
+    const html = generateMonthlyReportHTML(DM[idx], idx);
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(html);
@@ -795,7 +846,7 @@ ${ytData.recentVideos.length ? `
 
   const platformRecs = getRecommendationsByPlatform();
   const highlightIdx = viewMonth === -1 ? undefined : viewMonth;
-  const viewLabel = viewMonth === -1 ? "All Time" : MONTHS[viewMonth];
+  const viewLabel = viewMonth === -1 ? "All Time" : (DM[viewMonth] ?? MONTHS[viewMonth] ?? "");
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -803,7 +854,7 @@ ${ytData.recentVideos.length ? `
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-[#ffd801]" style={{ fontFamily: 'Oswald, sans-serif' }}>Analytics</h2>
-          <p className="text-[#096cfe] text-sm mt-0.5">Meta · YouTube · LinkedIn — data through Feb&apos;25</p>
+          <p className="text-[#096cfe] text-sm mt-0.5">Meta · YouTube · LinkedIn — data through {DM[DM.length - 1] ?? "Feb'25"}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Export type toggle */}
@@ -823,11 +874,11 @@ ${ytData.recentVideos.length ? `
               <div className="flex items-center gap-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5">
                 <Calendar size={11} className="text-gray-500" />
                 <select
-                  value={exportMonth}
+                  value={exportMonth === -1 ? DM.length - 1 : exportMonth}
                   onChange={(e) => setExportMonth(parseInt(e.target.value))}
                   className="bg-[#111] text-white text-xs focus:outline-none cursor-pointer"
                 >
-                  {MONTHS.map((m, i) => <option key={i} value={i} className="bg-[#111] text-white">{m}</option>)}
+                  {DM.map((m, i) => <option key={i} value={i} className="bg-[#111] text-white">{m}</option>)}
                 </select>
               </div>
               <button onClick={exportMonthlyReport} className="btn-outline text-xs flex items-center gap-1.5">
@@ -892,7 +943,7 @@ ${ytData.recentVideos.length ? `
           onClick={() => setViewMonth(-1)}
           className={`text-xs px-3 py-1 rounded-lg border font-semibold transition-all ${viewMonth === -1 ? "bg-[#ffd801] text-black border-[#ffd801]" : "bg-[#111] border-[#2a2a2a] text-gray-400 hover:text-white"}`}
         >All Time</button>
-        {MONTHS.map((m, i) => (
+        {DM.map((m, i) => (
           <button
             key={i}
             onClick={() => setViewMonth(i)}
@@ -923,18 +974,18 @@ ${ytData.recentVideos.length ? `
             </div>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Instagram Followers" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.followersCount) : fmt(valAt(INSTAGRAM.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(INSTAGRAM.totalFollowers, viewMonth)} up={isUpAt(INSTAGRAM.totalFollowers, viewMonth)} sparkData={INSTAGRAM.totalFollowers} sparkColor="#E1306C" icon={<Heart size={16} />} />
-            <KPICard label="YouTube Subscribers" value={ytData && viewMonth === -1 ? fmt(ytData.subscriberCount) : fmt(valAt(YOUTUBE_HIST.totalSubs, viewMonth))} sub={ytData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Last report" : MONTHS[viewMonth]} change={pctAt(YOUTUBE_HIST.totalSubs, viewMonth)} up={isUpAt(YOUTUBE_HIST.totalSubs, viewMonth)} sparkData={YOUTUBE_HIST.totalSubs} sparkColor="#FF0000" icon={<PlayCircle size={16} />} />
-            <KPICard label="Facebook Followers" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.followersCount) : fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(FACEBOOK.totalFollowers, viewMonth)} up={isUpAt(FACEBOOK.totalFollowers, viewMonth)} sparkData={FACEBOOK.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
-            <KPICard label="LinkedIn Followers" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liFollowers) : fmt(valAt(LINKEDIN.totalFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(LINKEDIN.totalFollowers, viewMonth)} up={isUpAt(LINKEDIN.totalFollowers, viewMonth)} sparkData={LINKEDIN.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
+            <KPICard label="Instagram Followers" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.followersCount) : fmt(valAt(DIG.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(DIG.totalFollowers, viewMonth)} up={isUpAt(DIG.totalFollowers, viewMonth)} sparkData={DIG.totalFollowers} sparkColor="#E1306C" icon={<Heart size={16} />} />
+            <KPICard label="YouTube Subscribers" value={ytData && viewMonth === -1 ? fmt(ytData.subscriberCount) : fmt(valAt(DYT.totalSubs, viewMonth))} sub={ytData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Last report" : DM[viewMonth]} change={pctAt(DYT.totalSubs, viewMonth)} up={isUpAt(DYT.totalSubs, viewMonth)} sparkData={DYT.totalSubs} sparkColor="#FF0000" icon={<PlayCircle size={16} />} />
+            <KPICard label="Facebook Followers" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.followersCount) : fmt(valAt(DFB.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(DFB.totalFollowers, viewMonth)} up={isUpAt(DFB.totalFollowers, viewMonth)} sparkData={DFB.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
+            <KPICard label="LinkedIn Followers" value={fmt(valAt(DLI.totalFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(DLI.totalFollowers, viewMonth)} up={isUpAt(DLI.totalFollowers, viewMonth)} sparkData={DLI.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
           </div>
           <div className="card p-5">
             <h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Reach — All Platforms {viewMonth !== -1 && <span className="text-[#ffd801] text-xs ml-2">({viewLabel} highlighted)</span>}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div><p className="text-[10px] text-[#E1306C] uppercase tracking-wider mb-2">Instagram Views</p><BarChart data={INSTAGRAM.views} labels={MONTHS} color="#E1306C" highlightIdx={highlightIdx} /></div>
-              <div><p className="text-[10px] text-[#FF0000] uppercase tracking-wider mb-2">YouTube Views</p><BarChart data={YOUTUBE_HIST.views} labels={MONTHS} color="#FF0000" highlightIdx={highlightIdx} /></div>
-              <div><p className="text-[10px] text-[#1877F2] uppercase tracking-wider mb-2">Facebook Reach</p><BarChart data={FACEBOOK.reach} labels={MONTHS} color="#1877F2" highlightIdx={highlightIdx} /></div>
-              <div><p className="text-[10px] text-[#0A66C2] uppercase tracking-wider mb-2">LinkedIn Impressions</p><BarChart data={LINKEDIN.impressions} labels={MONTHS} color="#0A66C2" highlightIdx={highlightIdx} /></div>
+              <div><p className="text-[10px] text-[#E1306C] uppercase tracking-wider mb-2">Instagram Views</p><BarChart data={DIG.views} labels={DM} color="#E1306C" highlightIdx={highlightIdx} /></div>
+              <div><p className="text-[10px] text-[#FF0000] uppercase tracking-wider mb-2">YouTube Views</p><BarChart data={DYT.views} labels={DM} color="#FF0000" highlightIdx={highlightIdx} /></div>
+              <div><p className="text-[10px] text-[#1877F2] uppercase tracking-wider mb-2">Facebook Reach</p><BarChart data={DFB.reach} labels={DM} color="#1877F2" highlightIdx={highlightIdx} /></div>
+              <div><p className="text-[10px] text-[#0A66C2] uppercase tracking-wider mb-2">LinkedIn Impressions</p><BarChart data={DLI.impressions} labels={DM} color="#0A66C2" highlightIdx={highlightIdx} /></div>
             </div>
           </div>
           {ytData && ytData.recentVideos.length > 0 && (
@@ -980,19 +1031,19 @@ ${ytData.recentVideos.length ? `
             </div>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Total Followers" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.followersCount) : fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(FACEBOOK.totalFollowers, viewMonth)} up={isUpAt(FACEBOOK.totalFollowers, viewMonth)} sparkData={FACEBOOK.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
-            <KPICard label="Monthly Reach" value={metaData && viewMonth === -1 && metaData.facebook.reach > 0 ? fmt(metaData.facebook.reach) : fmt(valAt(FACEBOOK.reach, viewMonth))} sub={metaData && viewMonth === -1 && metaData.facebook.reach > 0 ? "Live" : undefined} change={pctAt(FACEBOOK.reach, viewMonth)} up={isUpAt(FACEBOOK.reach, viewMonth)} sparkData={FACEBOOK.reach} sparkColor="#1877F2" icon={<Eye size={16} />} />
-            <KPICard label="Interactions" value={metaData && viewMonth === -1 && metaData.facebook.postEngagements > 0 ? fmt(metaData.facebook.postEngagements) : fmt(valAt(FACEBOOK.interactions, viewMonth))} sub={metaData && viewMonth === -1 && metaData.facebook.postEngagements > 0 ? "Live" : undefined} change={pctAt(FACEBOOK.interactions, viewMonth)} up={isUpAt(FACEBOOK.interactions, viewMonth)} sparkData={FACEBOOK.interactions} sparkColor="#1877F2" icon={<Heart size={16} />} />
-            <KPICard label="Fan Count" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.fanCount) : fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(FACEBOOK.newFollowers, viewMonth)} up={isUpAt(FACEBOOK.newFollowers, viewMonth)} sparkData={FACEBOOK.newFollowers} sparkColor="#1877F2" icon={<TrendingUp size={16} />} />
+            <KPICard label="Total Followers" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.followersCount) : fmt(valAt(DFB.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(DFB.totalFollowers, viewMonth)} up={isUpAt(DFB.totalFollowers, viewMonth)} sparkData={DFB.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
+            <KPICard label="Monthly Reach" value={metaData && viewMonth === -1 && metaData.facebook.reach > 0 ? fmt(metaData.facebook.reach) : fmt(valAt(DFB.reach, viewMonth))} sub={metaData && viewMonth === -1 && metaData.facebook.reach > 0 ? "Live" : undefined} change={pctAt(DFB.reach, viewMonth)} up={isUpAt(DFB.reach, viewMonth)} sparkData={DFB.reach} sparkColor="#1877F2" icon={<Eye size={16} />} />
+            <KPICard label="Interactions" value={metaData && viewMonth === -1 && metaData.facebook.postEngagements > 0 ? fmt(metaData.facebook.postEngagements) : fmt(valAt(DFB.interactions, viewMonth))} sub={metaData && viewMonth === -1 && metaData.facebook.postEngagements > 0 ? "Live" : undefined} change={pctAt(DFB.interactions, viewMonth)} up={isUpAt(DFB.interactions, viewMonth)} sparkData={DFB.interactions} sparkColor="#1877F2" icon={<Heart size={16} />} />
+            <KPICard label="Fan Count" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.fanCount) : fmt(valAt(DFB.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(DFB.newFollowers, viewMonth)} up={isUpAt(DFB.newFollowers, viewMonth)} sparkData={DFB.newFollowers} sparkColor="#1877F2" icon={<TrendingUp size={16} />} />
           </div>
           <div className="card p-5">
             <h3 className="text-sm font-bold text-white mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>Follower Growth</h3>
-            <p className="text-gray-600 text-xs mb-4">{MONTHS[0]} → {MONTHS.at(-1)}</p>
-            <BarChart data={FACEBOOK.totalFollowers} labels={MONTHS} color="#1877F2" height={120} highlightIdx={highlightIdx} />
+            <p className="text-gray-600 text-xs mb-4">{DM[0]} → {DM.at(-1)}</p>
+            <BarChart data={DFB.totalFollowers} labels={DM} color="#1877F2" height={120} highlightIdx={highlightIdx} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Reach</h3><BarChart data={FACEBOOK.reach} labels={MONTHS} color="#1877F2" height={100} highlightIdx={highlightIdx} /></div>
-            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Content Interactions</h3><BarChart data={FACEBOOK.interactions} labels={MONTHS} color="#60a5fa" height={100} highlightIdx={highlightIdx} /></div>
+            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Reach</h3><BarChart data={DFB.reach} labels={DM} color="#1877F2" height={100} highlightIdx={highlightIdx} /></div>
+            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Content Interactions</h3><BarChart data={DFB.interactions} labels={DM} color="#60a5fa" height={100} highlightIdx={highlightIdx} /></div>
           </div>
         </div>
       )}
@@ -1008,19 +1059,19 @@ ${ytData.recentVideos.length ? `
             </div>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <KPICard label="Total Followers" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.followersCount) : fmt(valAt(INSTAGRAM.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(INSTAGRAM.totalFollowers, viewMonth)} up={isUpAt(INSTAGRAM.totalFollowers, viewMonth)} sparkData={INSTAGRAM.totalFollowers} sparkColor="#E1306C" icon={<Users size={16} />} />
-            <KPICard label="Monthly Reach" value={metaData && viewMonth === -1 && metaData.instagram.reach > 0 ? fmt(metaData.instagram.reach) : fmt(valAt(INSTAGRAM.views, viewMonth))} sub={metaData && viewMonth === -1 && metaData.instagram.reach > 0 ? "Live" : undefined} change={pctAt(INSTAGRAM.views, viewMonth)} up={isUpAt(INSTAGRAM.views, viewMonth)} sparkData={INSTAGRAM.views} sparkColor="#E1306C" icon={<Eye size={16} />} />
-            <KPICard label="Media Count" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.mediaCount) : fmt(valAt(INSTAGRAM.newFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Total posts" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(INSTAGRAM.newFollowers, viewMonth)} up={isUpAt(INSTAGRAM.newFollowers, viewMonth)} sparkData={INSTAGRAM.newFollowers} sparkColor="#E1306C" icon={<TrendingUp size={16} />} />
+            <KPICard label="Total Followers" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.followersCount) : fmt(valAt(DIG.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(DIG.totalFollowers, viewMonth)} up={isUpAt(DIG.totalFollowers, viewMonth)} sparkData={DIG.totalFollowers} sparkColor="#E1306C" icon={<Users size={16} />} />
+            <KPICard label="Monthly Reach" value={metaData && viewMonth === -1 && metaData.instagram.reach > 0 ? fmt(metaData.instagram.reach) : fmt(valAt(DIG.views, viewMonth))} sub={metaData && viewMonth === -1 && metaData.instagram.reach > 0 ? "Live" : undefined} change={pctAt(DIG.views, viewMonth)} up={isUpAt(DIG.views, viewMonth)} sparkData={DIG.views} sparkColor="#E1306C" icon={<Eye size={16} />} />
+            <KPICard label="New Followers" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.mediaCount) : fmt(valAt(DIG.newFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Total posts" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(DIG.newFollowers, viewMonth)} up={isUpAt(DIG.newFollowers, viewMonth)} sparkData={DIG.newFollowers} sparkColor="#E1306C" icon={<TrendingUp size={16} />} />
           </div>
           <div className="card p-5">
             <h3 className="text-sm font-bold text-white mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>Follower Growth</h3>
-            <p className="text-gray-600 text-xs mb-4">{MONTHS[0]} → {MONTHS.at(-1)} · {fmt(INSTAGRAM.totalFollowers[0])} → {fmt(INSTAGRAM.totalFollowers.at(-1)!)} followers</p>
-            <BarChart data={INSTAGRAM.totalFollowers} labels={MONTHS} color="#E1306C" height={120} highlightIdx={highlightIdx} />
+            <p className="text-gray-600 text-xs mb-4">{DM[0]} → {DM.at(-1)} · {fmt(DIG.totalFollowers[0])} → {fmt(DIG.totalFollowers.at(-1)!)} followers</p>
+            <BarChart data={DIG.totalFollowers} labels={DM} color="#E1306C" height={120} highlightIdx={highlightIdx} />
           </div>
           <div className="card p-5">
             <h3 className="text-sm font-bold text-white mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Views</h3>
             <p className="text-gray-600 text-xs mb-4">Views across all posts &amp; reels</p>
-            <BarChart data={INSTAGRAM.views} labels={MONTHS} color="#E1306C" height={100} highlightIdx={highlightIdx} />
+            <BarChart data={DIG.views} labels={DM} color="#E1306C" height={100} highlightIdx={highlightIdx} />
           </div>
         </div>
       )}
@@ -1037,14 +1088,14 @@ ${ytData.recentVideos.length ? `
             </div>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Total Followers" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liFollowers) : fmt(valAt(LINKEDIN.totalFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(LINKEDIN.totalFollowers, viewMonth)} up={isUpAt(LINKEDIN.totalFollowers, viewMonth)} sparkData={LINKEDIN.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
-            <KPICard label="Impressions" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liImpressions) : fmt(valAt(LINKEDIN.impressions, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(LINKEDIN.impressions, viewMonth)} up={isUpAt(LINKEDIN.impressions, viewMonth)} sparkData={LINKEDIN.impressions} sparkColor="#0A66C2" icon={<Eye size={16} />} />
-            <KPICard label="Reactions" value={fmt(valAt(LINKEDIN.reactions, viewMonth))} change={pctAt(LINKEDIN.reactions, viewMonth)} up={isUpAt(LINKEDIN.reactions, viewMonth)} sparkData={LINKEDIN.reactions} sparkColor="#0A66C2" icon={<Heart size={16} />} />
-            <KPICard label="New Followers" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liNewFollowers) : fmt(valAt(LINKEDIN.newFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(LINKEDIN.newFollowers, viewMonth)} up={isUpAt(LINKEDIN.newFollowers, viewMonth)} sparkData={LINKEDIN.newFollowers} sparkColor="#0A66C2" icon={<TrendingUp size={16} />} />
+            <KPICard label="Total Followers" value={fmt(valAt(DLI.totalFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(DLI.totalFollowers, viewMonth)} up={isUpAt(DLI.totalFollowers, viewMonth)} sparkData={DLI.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
+            <KPICard label="Impressions" value={fmt(valAt(DLI.impressions, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(DLI.impressions, viewMonth)} up={isUpAt(DLI.impressions, viewMonth)} sparkData={DLI.impressions} sparkColor="#0A66C2" icon={<Eye size={16} />} />
+            <KPICard label="Reactions" value={fmt(valAt(DLI.reactions, viewMonth))} change={pctAt(DLI.reactions, viewMonth)} up={isUpAt(DLI.reactions, viewMonth)} sparkData={DLI.reactions} sparkColor="#0A66C2" icon={<Heart size={16} />} />
+            <KPICard label="New Followers" value={fmt(valAt(DLI.newFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(DLI.newFollowers, viewMonth)} up={isUpAt(DLI.newFollowers, viewMonth)} sparkData={DLI.newFollowers} sparkColor="#0A66C2" icon={<TrendingUp size={16} />} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Follower Growth</h3><BarChart data={LINKEDIN.totalFollowers} labels={MONTHS} color="#0A66C2" height={100} highlightIdx={highlightIdx} /></div>
-            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Impressions</h3><BarChart data={LINKEDIN.impressions} labels={MONTHS} color="#60a5fa" height={100} highlightIdx={highlightIdx} /></div>
+            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Follower Growth</h3><BarChart data={DLI.totalFollowers} labels={DM} color="#0A66C2" height={100} highlightIdx={highlightIdx} /></div>
+            <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Impressions</h3><BarChart data={DLI.impressions} labels={DM} color="#60a5fa" height={100} highlightIdx={highlightIdx} /></div>
           </div>
         </div>
       )}
@@ -1099,22 +1150,22 @@ ${ytData.recentVideos.length ? `
           )}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Total Subscribers" value={ytData && viewMonth === -1 ? fmt(ytData.subscriberCount) : fmt(valAt(YOUTUBE_HIST.totalSubs, viewMonth))} sub={ytData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Last report" : MONTHS[viewMonth]} change={pctAt(YOUTUBE_HIST.totalSubs, viewMonth)} up={isUpAt(YOUTUBE_HIST.totalSubs, viewMonth)} sparkData={YOUTUBE_HIST.totalSubs} sparkColor="#FF0000" icon={<PlayCircle size={16} />} />
-            <KPICard label="Monthly Views" value={fmt(valAt(YOUTUBE_HIST.views, viewMonth))} change={pctAt(YOUTUBE_HIST.views, viewMonth)} up={isUpAt(YOUTUBE_HIST.views, viewMonth)} sparkData={YOUTUBE_HIST.views} sparkColor="#FF0000" icon={<Eye size={16} />} />
-            <KPICard label="Watch Hours" value={fmt(valAt(YOUTUBE_HIST.watchHours, viewMonth)) + "h"} change={pctAt(YOUTUBE_HIST.watchHours, viewMonth)} up={isUpAt(YOUTUBE_HIST.watchHours, viewMonth)} sparkData={YOUTUBE_HIST.watchHours} sparkColor="#FF0000" icon={<Play size={16} />} />
-            <KPICard label="New Subscribers" value={fmt(valAt(YOUTUBE_HIST.newSubs, viewMonth))} sub={viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(YOUTUBE_HIST.newSubs, viewMonth)} up={isUpAt(YOUTUBE_HIST.newSubs, viewMonth)} sparkData={YOUTUBE_HIST.newSubs} sparkColor="#FF0000" icon={<TrendingUp size={16} />} />
+            <KPICard label="Total Subscribers" value={ytData && viewMonth === -1 ? fmt(ytData.subscriberCount) : fmt(valAt(DYT.totalSubs, viewMonth))} sub={ytData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Last report" : DM[viewMonth]} change={pctAt(DYT.totalSubs, viewMonth)} up={isUpAt(DYT.totalSubs, viewMonth)} sparkData={DYT.totalSubs} sparkColor="#FF0000" icon={<PlayCircle size={16} />} />
+            <KPICard label="Monthly Views" value={fmt(valAt(DYT.views, viewMonth))} change={pctAt(DYT.views, viewMonth)} up={isUpAt(DYT.views, viewMonth)} sparkData={DYT.views} sparkColor="#FF0000" icon={<Eye size={16} />} />
+            <KPICard label="Watch Hours" value={fmt(valAt(DYT.watchHours, viewMonth)) + "h"} change={pctAt(DYT.watchHours, viewMonth)} up={isUpAt(DYT.watchHours, viewMonth)} sparkData={DYT.watchHours} sparkColor="#FF0000" icon={<Play size={16} />} />
+            <KPICard label="New Subscribers" value={fmt(valAt(DYT.newSubs, viewMonth))} sub={viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(DYT.newSubs, viewMonth)} up={isUpAt(DYT.newSubs, viewMonth)} sparkData={DYT.newSubs} sparkColor="#FF0000" icon={<TrendingUp size={16} />} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="card p-5">
               <h3 className="text-sm font-bold text-white mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>Subscriber Growth</h3>
-              <p className="text-gray-600 text-xs mb-4">{fmt(YOUTUBE_HIST.totalSubs[0])} → {fmt(YOUTUBE_HIST.totalSubs.at(-1)!)}</p>
-              <BarChart data={YOUTUBE_HIST.totalSubs} labels={MONTHS} color="#FF0000" height={110} highlightIdx={highlightIdx} />
+              <p className="text-gray-600 text-xs mb-4">{fmt(DYT.totalSubs[0])} → {fmt(DYT.totalSubs.at(-1)!)}</p>
+              <BarChart data={DYT.totalSubs} labels={DM} color="#FF0000" height={110} highlightIdx={highlightIdx} />
             </div>
             <div className="card p-5">
               <h3 className="text-sm font-bold text-white mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Views</h3>
               <p className="text-gray-600 text-xs mb-4">Video views per month</p>
-              <BarChart data={YOUTUBE_HIST.views} labels={MONTHS} color="#ff6b6b" height={110} highlightIdx={highlightIdx} />
+              <BarChart data={DYT.views} labels={DM} color="#ff6b6b" height={110} highlightIdx={highlightIdx} />
             </div>
           </div>
 

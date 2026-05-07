@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Session } from "@/lib/auth";
 import ContentActions from "./ContentActions";
-import { Smartphone, Loader2, ChevronDown, ExternalLink } from "lucide-react";
+import { Smartphone, Loader2, ChevronDown, ExternalLink, ImageDown } from "lucide-react";
 
 const CANVA_TEMPLATE_URL = "https://canva.link/kab5agzit79nx49";
 
@@ -44,6 +44,8 @@ export default function StoriesTab({ session: _session }: { session: Session }) 
   const [count, setCount] = useState(1);
   const [showTopicInput, setShowTopicInput] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -54,6 +56,31 @@ export default function StoriesTab({ session: _session }: { session: Session }) 
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  async function exportStoryPNG(id: string, title: string) {
+    const card = cardRefs.current[id];
+    if (!card) return;
+    setExportingId(id);
+    try {
+      // Dynamic import to avoid SSR issues
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(card, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = `bbc-story-${title.slice(0, 30).replace(/\s+/g, "-").toLowerCase()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (e) {
+      console.error("PNG export failed:", e);
+    } finally {
+      setExportingId(null);
+    }
+  }
 
   async function handleGenerate() {
     setGenerating(true);
@@ -199,21 +226,14 @@ export default function StoriesTab({ session: _session }: { session: Session }) 
           return (
             <div
               key={item.id}
+              className="flex flex-col gap-1"
+            >
+            <div
+              ref={(el) => { cardRefs.current[item.id] = el; }}
               className={`relative rounded-2xl overflow-hidden fade-in ${bg} flex flex-col`}
               style={{ aspectRatio: "9/16", maxHeight: "620px" }}
             >
               <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-
-              {/* Actions top right */}
-              <div className="absolute top-3 right-3 z-10">
-                <ContentActions
-                  contentId={item.id}
-                  isFavorite={item.isFavorite}
-                  onDelete={fetchItems}
-                  downloadData={downloadText}
-                  downloadName={`bbc-story-${item.id}.txt`}
-                />
-              </div>
 
               {/* Content */}
               <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 py-6 text-center gap-4">
@@ -282,6 +302,28 @@ export default function StoriesTab({ session: _session }: { session: Session }) 
                   {timeLabel}
                 </span>
               </div>
+            </div>
+
+            {/* Buttons below card */}
+            <div className="flex items-center gap-1.5 px-1">
+              <button
+                onClick={() => exportStoryPNG(item.id, headline)}
+                disabled={exportingId === item.id}
+                className="flex-1 flex items-center justify-center gap-1.5 text-[10px] font-semibold py-2 rounded-lg bg-[#111] border border-[#2a2a2a] text-gray-400 hover:text-[#ffd801] hover:border-[#ffd801]/40 transition-colors disabled:opacity-50"
+              >
+                {exportingId === item.id
+                  ? <><Loader2 size={10} className="spin" />Exporting…</>
+                  : <><ImageDown size={10} />Download PNG</>
+                }
+              </button>
+              <ContentActions
+                contentId={item.id}
+                isFavorite={item.isFavorite}
+                onDelete={fetchItems}
+                downloadData={downloadText}
+                downloadName={`bbc-story-${item.id}.txt`}
+              />
+            </div>
             </div>
           );
         })}

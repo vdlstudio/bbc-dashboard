@@ -102,28 +102,40 @@ export async function generateCarousel(topic?: string): Promise<{
   tags: string[];
 }> {
   const client = getClient();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const prompt = topic
     ? `Create a BBC Instagram carousel post about: ${topic}`
     : `Create a BBC Instagram carousel post about recent Bali hotel, property, or Indonesia economy data.`;
 
   const msg = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1400,
+    max_tokens: 2000,
+    tools: [
+      {
+        type: "web_search_20250305" as const,
+        name: "web_search",
+      } as { type: "web_search_20250305"; name: "web_search" },
+    ],
     messages: [
       {
         role: "user",
         content: `${BBC_BRAND}
 
+Today's date: ${dateStr}
+
 ${prompt}
 
-BBC Carousel posts follow a STRICT format — each slide features ONE key statistic. Use real 2025-2026 data from credible sources (Colliers International, BPS Indonesia, STR Global, Bank Indonesia, Reuters, etc.). All statistics MUST be from 2025 or 2026 — do not use older data.
+IMPORTANT: Use the web_search tool to find the MOST RECENT 2025-2026 statistics before generating the carousel. Search for current Bali property prices, tourism arrivals, villa ROI data, BPS Indonesia reports, Colliers International Bali reports, etc. Only use data from 2025 or 2026 articles — verify dates before including any stat.
+
+BBC Carousel posts follow a STRICT format — each slide features ONE key statistic.
 
 SLIDE FORMAT (5-6 slides):
 - stat: The big number/percentage (e.g. "63.4%", "$139.4", "58,822", "$676M")
-- label: Short description of what the stat means (e.g. "Average occupancy rate in Q1 2025")
-- detail: One sentence adding context (e.g. "A 3.6% increase from Q1 2024 (61.2%)")
+- label: Short description of what the stat means (e.g. "Average occupancy rate in Q1 2026")
+- detail: One sentence adding context (e.g. "A 3.6% increase from Q1 2025 (61.2%)")
 - source: Source name (e.g. "Colliers International", "BPS Indonesia")
-- sourceUrl: REAL article URL where this data can be verified (use actual URLs like https://www.colliers.com/... or https://www.bps.go.id/... — must be a working article or report URL from 2025 or 2026)
+- sourceUrl: URL of the article where this stat was found (must be a real, working URL)
 
 CAPTION FORMAT: Write an engaging Instagram caption with:
 - Emoji-rich title line
@@ -155,7 +167,9 @@ Return ONLY valid JSON (no markdown, no code fences):
     ],
   });
 
-  const text = (msg.content[0] as { text: string }).text;
+  // Handle multi-block response (web search + text blocks)
+  const textBlock = msg.content.filter(b => b.type === "text").at(-1);
+  const text = textBlock ? (textBlock as { type: "text"; text: string }).text : "";
   return parseJSON(text);
 }
 
@@ -179,15 +193,28 @@ export async function generateReelScript(topic?: string): Promise<{
     ? `Create a BBC Reels script about: ${topic}`
     : `Create a BBC Instagram/TikTok Reels script about a trending Bali business or investment topic.`;
 
+  const now2 = new Date();
+  const dateStr2 = now2.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
   const msg = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1000,
+    max_tokens: 1500,
+    tools: [
+      {
+        type: "web_search_20250305" as const,
+        name: "web_search",
+      } as { type: "web_search_20250305"; name: "web_search" },
+    ],
     messages: [
       {
         role: "user",
         content: `${BBC_BRAND}
 
+Today's date: ${dateStr2}
+
 ${prompt}
+
+IMPORTANT: Use web_search to find ONE recent 2025-2026 article or report that contains real statistics for this topic. Use it to ground your reel in actual current data.
 
 BBC Reels are short educational news-style videos for 2026. All data and references MUST be current 2025-2026 figures. Format exactly like this:
 
@@ -221,8 +248,10 @@ Return ONLY valid JSON (no markdown, no code fences):
     ],
   });
 
-  const text = (msg.content[0] as { text: string }).text;
-  return parseJSON(text);
+  // Handle multi-block response (web search tool + text)
+  const reelTextBlock = msg.content.filter(b => b.type === "text").at(-1);
+  const reelText = reelTextBlock ? (reelTextBlock as { type: "text"; text: string }).text : "";
+  return parseJSON(reelText);
 }
 
 // ─── BLOG POST / REPORT ──────────────────────────────────────────────────────
