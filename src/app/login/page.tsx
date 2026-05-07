@@ -40,7 +40,7 @@ export default function LoginPage() {
         <div className="text-center mb-10">
           <div className="inline-flex flex-col items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-white.svg" alt="Bali Business Club" className="h-16 w-auto" style={{ filter: 'brightness(0) invert(1)' }} />
+            <img src="/logo-white.svg" alt="Bali Business Club" className="h-14 w-auto" />
             <div className="flex items-center gap-2">
               <div className="h-px w-12 bg-[#096cfe]/50" />
               <span className="text-[#096cfe] text-xs tracking-[0.25em] uppercase font-medium">Marketing Team</span>
