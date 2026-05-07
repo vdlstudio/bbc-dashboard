@@ -63,6 +63,52 @@ interface YTData {
   recentVideos: YTVideo[];
 }
 
+interface MetaData {
+  facebook: {
+    pageId: string;
+    pageName: string;
+    fanCount: number;
+    followersCount: number;
+    reach: number;
+    impressions: number;
+    postEngagements: number;
+  };
+  instagram: {
+    igId: string;
+    username: string;
+    followersCount: number;
+    mediaCount: number;
+    reach: number;
+    impressions: number;
+  };
+  fetchedAt: string;
+}
+
+interface SheetsRow {
+  month: string;
+  fbFollowers: number;
+  fbViews: number;
+  fbInteractions: number;
+  fbNewFollowers: number;
+  igFollowers: number;
+  igViews: number;
+  igNewFollowers: number;
+  liFollowers: number;
+  liImpressions: number;
+  liNewFollowers: number;
+  ytSubs: number;
+  ytViews: number;
+  ytWatchHours: number;
+  ytNewSubs: number;
+}
+
+interface SheetsData {
+  rows: SheetsRow[];
+  latest: SheetsRow | null;
+  rowCount: number;
+  fetchedAt: string;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function fmt(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
@@ -578,6 +624,10 @@ export default function AnalyticsTab({ session: _session }: { session: Session }
   const [ytData, setYtData] = useState<YTData | null>(null);
   const [ytLoading, setYtLoading] = useState(false);
   const [ytError, setYtError] = useState<string | null>(null);
+  const [metaData, setMetaData] = useState<MetaData | null>(null);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [sheetsData, setSheetsData] = useState<SheetsData | null>(null);
+  const [sheetsLoading, setSheetsLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [exportMonth, setExportMonth] = useState(MONTHS.length - 1);
   const [exportType, setExportType] = useState<"monthly" | "weekly">("monthly");
@@ -602,8 +652,45 @@ export default function AnalyticsTab({ session: _session }: { session: Session }
     }
   }
 
+  async function loadMeta() {
+    setMetaLoading(true);
+    try {
+      const res = await fetch("/api/analytics/meta");
+      if (res.ok) {
+        const data = await res.json();
+        setMetaData(data);
+      }
+    } catch {
+      // Meta data optional, fail silently
+    } finally {
+      setMetaLoading(false);
+    }
+  }
+
+  async function loadSheets() {
+    setSheetsLoading(true);
+    try {
+      const res = await fetch("/api/analytics/sheets");
+      if (res.ok) {
+        const data = await res.json();
+        setSheetsData(data);
+      }
+    } catch {
+      // Sheets data optional, fail silently
+    } finally {
+      setSheetsLoading(false);
+    }
+  }
+
+  async function refreshAll() {
+    await Promise.all([loadYouTube(), loadMeta(), loadSheets()]);
+    setLastRefresh(new Date());
+  }
+
   useEffect(() => {
     loadYouTube();
+    loadMeta();
+    loadSheets();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -771,12 +858,32 @@ ${ytData.recentVideos.length ? `
             </>
           )}
 
-          <button onClick={loadYouTube} disabled={ytLoading} className="btn-outline text-xs flex items-center gap-1.5 disabled:opacity-50">
-            <RefreshCw size={11} className={ytLoading ? "spin" : ""} />Refresh
+          <button onClick={refreshAll} disabled={ytLoading || metaLoading || sheetsLoading} className="btn-outline text-xs flex items-center gap-1.5 disabled:opacity-50">
+            <RefreshCw size={11} className={(ytLoading || metaLoading || sheetsLoading) ? "spin" : ""} />Refresh All
           </button>
         </div>
       </div>
-      <p className="text-gray-600 text-[10px] mb-4">Last YT sync: {lastRefresh.toLocaleTimeString()}</p>
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <p className="text-gray-600 text-[10px]">Last sync: {lastRefresh.toLocaleTimeString()}</p>
+        {metaData && (
+          <span className="text-[10px] text-green-400 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+            Meta live · {metaData.facebook.pageName}
+          </span>
+        )}
+        {sheetsData && (
+          <span className="text-[10px] text-blue-400 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+            Sheets · {sheetsData.rowCount} months
+          </span>
+        )}
+        {ytData && (
+          <span className="text-[10px] text-red-400 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+            YouTube live
+          </span>
+        )}
+      </div>
 
       {/* Month view selector */}
       <div className="flex items-center gap-2 mb-5 flex-wrap">
@@ -816,10 +923,10 @@ ${ytData.recentVideos.length ? `
             </div>
           )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Instagram Followers" value={fmt(valAt(INSTAGRAM.totalFollowers, viewMonth))} change={pctAt(INSTAGRAM.totalFollowers, viewMonth)} up={isUpAt(INSTAGRAM.totalFollowers, viewMonth)} sparkData={INSTAGRAM.totalFollowers} sparkColor="#E1306C" icon={<Heart size={16} />} />
+            <KPICard label="Instagram Followers" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.followersCount) : fmt(valAt(INSTAGRAM.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(INSTAGRAM.totalFollowers, viewMonth)} up={isUpAt(INSTAGRAM.totalFollowers, viewMonth)} sparkData={INSTAGRAM.totalFollowers} sparkColor="#E1306C" icon={<Heart size={16} />} />
             <KPICard label="YouTube Subscribers" value={ytData && viewMonth === -1 ? fmt(ytData.subscriberCount) : fmt(valAt(YOUTUBE_HIST.totalSubs, viewMonth))} sub={ytData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Last report" : MONTHS[viewMonth]} change={pctAt(YOUTUBE_HIST.totalSubs, viewMonth)} up={isUpAt(YOUTUBE_HIST.totalSubs, viewMonth)} sparkData={YOUTUBE_HIST.totalSubs} sparkColor="#FF0000" icon={<PlayCircle size={16} />} />
-            <KPICard label="Facebook Followers" value={fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} change={pctAt(FACEBOOK.totalFollowers, viewMonth)} up={isUpAt(FACEBOOK.totalFollowers, viewMonth)} sparkData={FACEBOOK.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
-            <KPICard label="LinkedIn Followers" value={fmt(valAt(LINKEDIN.totalFollowers, viewMonth))} change={pctAt(LINKEDIN.totalFollowers, viewMonth)} up={isUpAt(LINKEDIN.totalFollowers, viewMonth)} sparkData={LINKEDIN.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
+            <KPICard label="Facebook Followers" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.followersCount) : fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(FACEBOOK.totalFollowers, viewMonth)} up={isUpAt(FACEBOOK.totalFollowers, viewMonth)} sparkData={FACEBOOK.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
+            <KPICard label="LinkedIn Followers" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liFollowers) : fmt(valAt(LINKEDIN.totalFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(LINKEDIN.totalFollowers, viewMonth)} up={isUpAt(LINKEDIN.totalFollowers, viewMonth)} sparkData={LINKEDIN.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
           </div>
           <div className="card p-5">
             <h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Monthly Reach — All Platforms {viewMonth !== -1 && <span className="text-[#ffd801] text-xs ml-2">({viewLabel} highlighted)</span>}</h3>
@@ -865,11 +972,18 @@ ${ytData.recentVideos.length ? `
       {platform === "facebook" && (
         <div className="space-y-6 fade-in">
           {viewMonth !== -1 && <div className="flex items-center gap-2 text-xs text-[#1877F2] bg-[#1877F210] border border-[#1877F230] rounded-lg px-3 py-2"><Calendar size={12} />Showing data for <strong>{viewLabel}</strong></div>}
+          {metaData && viewMonth === -1 && (
+            <div className="flex items-center gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+              Live data from Meta API · {metaData.facebook.pageName}
+              {metaLoading && <span className="ml-auto text-gray-500">Refreshing…</span>}
+            </div>
+          )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Total Followers" value={fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} change={pctAt(FACEBOOK.totalFollowers, viewMonth)} up={isUpAt(FACEBOOK.totalFollowers, viewMonth)} sparkData={FACEBOOK.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
-            <KPICard label="Monthly Reach" value={fmt(valAt(FACEBOOK.reach, viewMonth))} change={pctAt(FACEBOOK.reach, viewMonth)} up={isUpAt(FACEBOOK.reach, viewMonth)} sparkData={FACEBOOK.reach} sparkColor="#1877F2" icon={<Eye size={16} />} />
-            <KPICard label="Interactions" value={fmt(valAt(FACEBOOK.interactions, viewMonth))} change={pctAt(FACEBOOK.interactions, viewMonth)} up={isUpAt(FACEBOOK.interactions, viewMonth)} sparkData={FACEBOOK.interactions} sparkColor="#1877F2" icon={<Heart size={16} />} />
-            <KPICard label="New Followers" value={fmt(valAt(FACEBOOK.newFollowers, viewMonth))} sub={viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(FACEBOOK.newFollowers, viewMonth)} up={isUpAt(FACEBOOK.newFollowers, viewMonth)} sparkData={FACEBOOK.newFollowers} sparkColor="#1877F2" icon={<TrendingUp size={16} />} />
+            <KPICard label="Total Followers" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.followersCount) : fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(FACEBOOK.totalFollowers, viewMonth)} up={isUpAt(FACEBOOK.totalFollowers, viewMonth)} sparkData={FACEBOOK.totalFollowers} sparkColor="#1877F2" icon={<Users size={16} />} />
+            <KPICard label="Monthly Reach" value={metaData && viewMonth === -1 && metaData.facebook.reach > 0 ? fmt(metaData.facebook.reach) : fmt(valAt(FACEBOOK.reach, viewMonth))} sub={metaData && viewMonth === -1 && metaData.facebook.reach > 0 ? "Live" : undefined} change={pctAt(FACEBOOK.reach, viewMonth)} up={isUpAt(FACEBOOK.reach, viewMonth)} sparkData={FACEBOOK.reach} sparkColor="#1877F2" icon={<Eye size={16} />} />
+            <KPICard label="Interactions" value={metaData && viewMonth === -1 && metaData.facebook.postEngagements > 0 ? fmt(metaData.facebook.postEngagements) : fmt(valAt(FACEBOOK.interactions, viewMonth))} sub={metaData && viewMonth === -1 && metaData.facebook.postEngagements > 0 ? "Live" : undefined} change={pctAt(FACEBOOK.interactions, viewMonth)} up={isUpAt(FACEBOOK.interactions, viewMonth)} sparkData={FACEBOOK.interactions} sparkColor="#1877F2" icon={<Heart size={16} />} />
+            <KPICard label="Fan Count" value={metaData && viewMonth === -1 ? fmt(metaData.facebook.fanCount) : fmt(valAt(FACEBOOK.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(FACEBOOK.newFollowers, viewMonth)} up={isUpAt(FACEBOOK.newFollowers, viewMonth)} sparkData={FACEBOOK.newFollowers} sparkColor="#1877F2" icon={<TrendingUp size={16} />} />
           </div>
           <div className="card p-5">
             <h3 className="text-sm font-bold text-white mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>Follower Growth</h3>
@@ -887,10 +1001,16 @@ ${ytData.recentVideos.length ? `
       {platform === "instagram" && (
         <div className="space-y-6 fade-in">
           {viewMonth !== -1 && <div className="flex items-center gap-2 text-xs text-[#E1306C] bg-[#E1306C10] border border-[#E1306C30] rounded-lg px-3 py-2"><Calendar size={12} />Showing data for <strong>{viewLabel}</strong></div>}
+          {metaData && viewMonth === -1 && (
+            <div className="flex items-center gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+              Live data from Meta API {metaData.instagram.username ? `· @${metaData.instagram.username}` : ""}
+            </div>
+          )}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <KPICard label="Total Followers" value={fmt(valAt(INSTAGRAM.totalFollowers, viewMonth))} change={pctAt(INSTAGRAM.totalFollowers, viewMonth)} up={isUpAt(INSTAGRAM.totalFollowers, viewMonth)} sparkData={INSTAGRAM.totalFollowers} sparkColor="#E1306C" icon={<Users size={16} />} />
-            <KPICard label="Monthly Views" value={fmt(valAt(INSTAGRAM.views, viewMonth))} change={pctAt(INSTAGRAM.views, viewMonth)} up={isUpAt(INSTAGRAM.views, viewMonth)} sparkData={INSTAGRAM.views} sparkColor="#E1306C" icon={<Eye size={16} />} />
-            <KPICard label="New Followers" value={fmt(valAt(INSTAGRAM.newFollowers, viewMonth))} sub={viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(INSTAGRAM.newFollowers, viewMonth)} up={isUpAt(INSTAGRAM.newFollowers, viewMonth)} sparkData={INSTAGRAM.newFollowers} sparkColor="#E1306C" icon={<TrendingUp size={16} />} />
+            <KPICard label="Total Followers" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.followersCount) : fmt(valAt(INSTAGRAM.totalFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Live" : undefined} change={pctAt(INSTAGRAM.totalFollowers, viewMonth)} up={isUpAt(INSTAGRAM.totalFollowers, viewMonth)} sparkData={INSTAGRAM.totalFollowers} sparkColor="#E1306C" icon={<Users size={16} />} />
+            <KPICard label="Monthly Reach" value={metaData && viewMonth === -1 && metaData.instagram.reach > 0 ? fmt(metaData.instagram.reach) : fmt(valAt(INSTAGRAM.views, viewMonth))} sub={metaData && viewMonth === -1 && metaData.instagram.reach > 0 ? "Live" : undefined} change={pctAt(INSTAGRAM.views, viewMonth)} up={isUpAt(INSTAGRAM.views, viewMonth)} sparkData={INSTAGRAM.views} sparkColor="#E1306C" icon={<Eye size={16} />} />
+            <KPICard label="Media Count" value={metaData && viewMonth === -1 ? fmt(metaData.instagram.mediaCount) : fmt(valAt(INSTAGRAM.newFollowers, viewMonth))} sub={metaData && viewMonth === -1 ? "Total posts" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(INSTAGRAM.newFollowers, viewMonth)} up={isUpAt(INSTAGRAM.newFollowers, viewMonth)} sparkData={INSTAGRAM.newFollowers} sparkColor="#E1306C" icon={<TrendingUp size={16} />} />
           </div>
           <div className="card p-5">
             <h3 className="text-sm font-bold text-white mb-1" style={{ fontFamily: 'Oswald, sans-serif' }}>Follower Growth</h3>
@@ -909,11 +1029,18 @@ ${ytData.recentVideos.length ? `
       {platform === "linkedin" && (
         <div className="space-y-6 fade-in">
           {viewMonth !== -1 && <div className="flex items-center gap-2 text-xs text-[#0A66C2] bg-[#0A66C210] border border-[#0A66C230] rounded-lg px-3 py-2"><Calendar size={12} />Showing data for <strong>{viewLabel}</strong></div>}
+          {sheetsData && viewMonth === -1 && (
+            <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+              Live data from Google Sheets · {sheetsData.rowCount} months · Latest: {sheetsData.latest?.month}
+              {sheetsLoading && <span className="ml-auto text-gray-500">Refreshing…</span>}
+            </div>
+          )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Total Followers" value={fmt(valAt(LINKEDIN.totalFollowers, viewMonth))} change={pctAt(LINKEDIN.totalFollowers, viewMonth)} up={isUpAt(LINKEDIN.totalFollowers, viewMonth)} sparkData={LINKEDIN.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
-            <KPICard label="Impressions" value={fmt(valAt(LINKEDIN.impressions, viewMonth))} change={pctAt(LINKEDIN.impressions, viewMonth)} up={isUpAt(LINKEDIN.impressions, viewMonth)} sparkData={LINKEDIN.impressions} sparkColor="#0A66C2" icon={<Eye size={16} />} />
+            <KPICard label="Total Followers" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liFollowers) : fmt(valAt(LINKEDIN.totalFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(LINKEDIN.totalFollowers, viewMonth)} up={isUpAt(LINKEDIN.totalFollowers, viewMonth)} sparkData={LINKEDIN.totalFollowers} sparkColor="#0A66C2" icon={<Users size={16} />} />
+            <KPICard label="Impressions" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liImpressions) : fmt(valAt(LINKEDIN.impressions, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : undefined} change={pctAt(LINKEDIN.impressions, viewMonth)} up={isUpAt(LINKEDIN.impressions, viewMonth)} sparkData={LINKEDIN.impressions} sparkColor="#0A66C2" icon={<Eye size={16} />} />
             <KPICard label="Reactions" value={fmt(valAt(LINKEDIN.reactions, viewMonth))} change={pctAt(LINKEDIN.reactions, viewMonth)} up={isUpAt(LINKEDIN.reactions, viewMonth)} sparkData={LINKEDIN.reactions} sparkColor="#0A66C2" icon={<Heart size={16} />} />
-            <KPICard label="New Followers" value={fmt(valAt(LINKEDIN.newFollowers, viewMonth))} sub={viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(LINKEDIN.newFollowers, viewMonth)} up={isUpAt(LINKEDIN.newFollowers, viewMonth)} sparkData={LINKEDIN.newFollowers} sparkColor="#0A66C2" icon={<TrendingUp size={16} />} />
+            <KPICard label="New Followers" value={sheetsData?.latest && viewMonth === -1 ? fmt(sheetsData.latest.liNewFollowers) : fmt(valAt(LINKEDIN.newFollowers, viewMonth))} sub={sheetsData?.latest && viewMonth === -1 ? "Sheets" : viewMonth === -1 ? "Latest month" : viewLabel} change={pctAt(LINKEDIN.newFollowers, viewMonth)} up={isUpAt(LINKEDIN.newFollowers, viewMonth)} sparkData={LINKEDIN.newFollowers} sparkColor="#0A66C2" icon={<TrendingUp size={16} />} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="card p-5"><h3 className="text-sm font-bold text-white mb-4" style={{ fontFamily: 'Oswald, sans-serif' }}>Follower Growth</h3><BarChart data={LINKEDIN.totalFollowers} labels={MONTHS} color="#0A66C2" height={100} highlightIdx={highlightIdx} /></div>

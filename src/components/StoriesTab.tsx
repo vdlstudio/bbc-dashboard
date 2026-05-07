@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@/lib/auth";
 import ContentActions from "./ContentActions";
-import { Smartphone, Loader2, ChevronDown } from "lucide-react";
+import { Smartphone, Loader2, ChevronDown, ExternalLink } from "lucide-react";
+
+const CANVA_TEMPLATE_URL = "https://canva.link/kab5agzit79nx49";
 
 interface StoryData {
   category?: string;
@@ -92,6 +94,16 @@ export default function StoriesTab({ session: _session }: { session: Session }) 
 
         {/* Generate controls */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Canva Design button */}
+          <a
+            href={CANVA_TEMPLATE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-[#8b5cf6] text-[#8b5cf6] hover:bg-[#8b5cf6]/10 transition-colors"
+          >
+            <ExternalLink size={12} />
+            Design in Canva
+          </a>
           {/* Count selector */}
           <div className="relative">
             <select

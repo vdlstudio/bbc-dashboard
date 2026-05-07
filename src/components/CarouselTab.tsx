@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Session } from "@/lib/auth";
 import GenerateButton from "./GenerateButton";
 import ContentActions from "./ContentActions";
-import { Layers, Clipboard, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Layers, Clipboard, Check, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
 interface Slide {
   // new format
@@ -12,6 +12,7 @@ interface Slide {
   label?: string;
   detail?: string;
   source?: string;
+  sourceUrl?: string;
   // legacy format
   number?: string;
   heading?: string;
@@ -172,9 +173,24 @@ export default function CarouselTab({ session: _session }: { session: Session })
                         <p className="text-gray-400 text-[10px] leading-relaxed">{slide.detail}</p>
                       )}
                       {isExpanded && slide.source && (
-                        <p className="text-gray-600 text-[9px] uppercase tracking-wide mt-auto pt-1">
-                          {slide.source}
-                        </p>
+                        <div className="mt-auto pt-1">
+                          {slide.sourceUrl ? (
+                            <a
+                              href={slide.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#096cfe] text-[9px] uppercase tracking-wide flex items-center gap-0.5 hover:text-[#ffd801] transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink size={8} />
+                              {slide.source}
+                            </a>
+                          ) : (
+                            <p className="text-gray-600 text-[9px] uppercase tracking-wide">
+                              {slide.source}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}

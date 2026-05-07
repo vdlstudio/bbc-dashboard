@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const YT_API_KEY = "AIzaSyBtQpobgVOFCjym2Jnr6ipNm79Hir24kNE";
+const YT_API_KEY = process.env.YOUTUBE_API_KEY ?? "AIzaSyDhTOnQCpQXfYPsff1KUmM2zkjPx2gOkFo";
 
 export async function GET() {
   try {

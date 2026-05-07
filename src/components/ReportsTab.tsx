@@ -36,7 +36,7 @@ interface ContentItem {
   isFavorite: boolean;
 }
 
-// ─── BBC Article HTML Template ───────────────────────────────────────────────
+// ─── BBC Blog Post HTML Template (Bali Club Business Design) ─────────────────
 function generateReportHTML(data: ReportData, date: string, generatedAt: string): string {
   const stats = data.keyStats?.map(s => `
     <div class="stat-card">
@@ -46,7 +46,9 @@ function generateReportHTML(data: ReportData, date: string, generatedAt: string)
 
   const sections = data.sections?.map((s, i) => `
     <div class="section">
-      <div class="section-number">${String(i + 1).padStart(2, "0")}</div>
+      <div class="section-accent">
+        <div class="section-num">${String(i + 1).padStart(2, "0")}</div>
+      </div>
       <div class="section-body">
         <h2>${s.heading}</h2>
         <p>${s.content}</p>
@@ -61,12 +63,20 @@ function generateReportHTML(data: ReportData, date: string, generatedAt: string)
   <meta name="description" content="${data.metaDescription ?? data.summary}">
   <title>${data.title} — Bali Business Club</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --yellow: #f5c500;
+      --blue: #1a4fa0;
+      --surface: #0d1417;
+      --text: #e8eaed;
+      --muted: #8a9099;
+    }
+
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Barlow', sans-serif;
       background: #ffffff;
       color: #1a1a1a;
       line-height: 1.7;
@@ -75,208 +85,268 @@ function generateReportHTML(data: ReportData, date: string, generatedAt: string)
 
     /* ─── Masthead ─── */
     .masthead {
-      background: #000000;
+      background: var(--surface);
       padding: 0;
-      margin-bottom: 0;
     }
-    .masthead-top {
+    .masthead-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 18px 48px;
-      border-bottom: 3px solid #ffd801;
+      padding: 16px 48px;
+      border-bottom: 3px solid var(--yellow);
     }
+    .brand-block { display: flex; flex-direction: column; gap: 2px; }
     .brand-name {
-      font-family: 'Oswald', sans-serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: #ffd801;
-      letter-spacing: 0.08em;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--yellow);
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
     .brand-sub {
-      font-size: 10px;
-      color: #096cfe;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      margin-top: 2px;
-    }
-    .masthead-meta {
-      text-align: right;
-    }
-    .masthead-meta .section-label {
-      font-family: 'Oswald', sans-serif;
+      font-family: 'Barlow Condensed', sans-serif;
       font-size: 11px;
-      color: #ffd801;
+      font-weight: 600;
+      color: var(--blue);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+    .masthead-right { text-align: right; }
+    .masthead-right .report-type {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--yellow);
       letter-spacing: 0.2em;
       text-transform: uppercase;
     }
-    .masthead-meta .pub-date {
+    .masthead-right .pub-date {
+      font-family: 'Barlow', sans-serif;
       font-size: 11px;
-      color: #888;
+      color: var(--muted);
       margin-top: 3px;
     }
 
     /* ─── Hero ─── */
     .hero {
-      background: linear-gradient(135deg, #05429d 0%, #000000 60%);
-      padding: 52px 48px 44px;
+      background: var(--surface);
+      padding: 0;
     }
-    .hero-category {
-      display: inline-block;
-      background: #ffd801;
+    .hero-banner {
+      display: flex;
+      height: 6px;
+    }
+    .hero-banner-yellow { background: var(--yellow); flex: 2; }
+    .hero-banner-blue   { background: var(--blue);   flex: 5; }
+    .hero-content {
+      padding: 48px 48px 52px;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .hero-tag-pill {
+      background: var(--yellow);
       color: #000;
-      font-family: 'Oswald', sans-serif;
+      font-family: 'Barlow Condensed', sans-serif;
       font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
+      font-weight: 800;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      padding: 5px 14px;
-      margin-bottom: 20px;
+      padding: 4px 12px;
+      border-radius: 2px;
+    }
+    .hero-tag-date {
+      font-family: 'Barlow', sans-serif;
+      font-size: 12px;
+      color: var(--muted);
     }
     .hero h1 {
-      font-family: 'Oswald', sans-serif;
-      font-size: 40px;
-      font-weight: 700;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 52px;
+      font-weight: 900;
       color: #ffffff;
-      line-height: 1.1;
+      line-height: 1.0;
       letter-spacing: 0.01em;
-      max-width: 760px;
-      margin-bottom: 16px;
+      text-transform: uppercase;
+      max-width: 780px;
+      margin-bottom: 20px;
     }
     .hero-summary {
+      font-family: 'Barlow', sans-serif;
       font-size: 17px;
-      color: rgba(255,255,255,0.75);
-      font-weight: 300;
-      max-width: 640px;
+      color: rgba(255,255,255,0.72);
+      font-weight: 400;
+      max-width: 620px;
       line-height: 1.65;
-    }
-    .hero-divider {
-      height: 1px;
-      background: rgba(255,216,1,0.3);
-      margin: 28px 0 0;
     }
 
     /* ─── Container ─── */
     .container {
-      max-width: 860px;
+      max-width: 880px;
       margin: 0 auto;
-      padding: 0 48px 64px;
+      padding: 0 48px 72px;
+      background: #fff;
     }
 
-    /* ─── Stats ─── */
+    /* ─── Stats Grid ─── */
     .stats-section {
-      padding: 36px 0;
-      border-bottom: 1px solid #e8e8e8;
+      padding: 44px 0 36px;
+      border-bottom: 1px solid #e4e4e4;
     }
-    .stats-label {
-      font-family: 'Oswald', sans-serif;
-      font-size: 10px;
-      font-weight: 600;
-      color: #096cfe;
-      letter-spacing: 0.25em;
+    .section-eyebrow {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: 0.24em;
       text-transform: uppercase;
-      margin-bottom: 20px;
+      margin-bottom: 22px;
     }
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
     }
     .stat-card {
-      background: #000;
-      border-radius: 8px;
-      padding: 22px 18px;
+      background: var(--surface);
+      border-radius: 6px;
+      padding: 24px 16px;
       text-align: center;
-      border-top: 3px solid #ffd801;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--yellow), var(--blue));
     }
     .stat-value {
-      font-family: 'Oswald', sans-serif;
-      font-size: 30px;
-      font-weight: 700;
-      color: #ffd801;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--yellow);
       line-height: 1;
       margin-bottom: 8px;
+      letter-spacing: -0.01em;
     }
     .stat-label {
+      font-family: 'Barlow', sans-serif;
       font-size: 11px;
-      color: #888;
+      color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.07em;
       line-height: 1.4;
     }
 
-    /* ─── Sections ─── */
-    .sections-header {
-      font-family: 'Oswald', sans-serif;
-      font-size: 10px;
-      font-weight: 600;
-      color: #096cfe;
-      letter-spacing: 0.25em;
+    /* ─── Insight Banner ─── */
+    .insight-banner {
+      background: linear-gradient(135deg, var(--blue) 0%, #0d2a5e 100%);
+      border-radius: 8px;
+      padding: 28px 32px;
+      margin: 36px 0;
+      border-left: 4px solid var(--yellow);
+    }
+    .insight-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--yellow);
+      letter-spacing: 0.22em;
       text-transform: uppercase;
-      padding: 32px 0 20px;
+      margin-bottom: 10px;
+    }
+    .insight-text {
+      font-family: 'Barlow', sans-serif;
+      font-size: 16px;
+      color: rgba(255,255,255,0.88);
+      line-height: 1.7;
+      font-weight: 400;
+    }
+
+    /* ─── Analysis Sections ─── */
+    .analysis-header {
+      padding: 36px 0 20px;
     }
     .section {
       display: flex;
       gap: 24px;
       padding: 28px 0;
-      border-bottom: 1px solid #ebebeb;
+      border-bottom: 1px solid #eaeaea;
     }
-    .section:last-child { border-bottom: none; }
-    .section-number {
-      font-family: 'Oswald', sans-serif;
-      font-size: 48px;
-      font-weight: 700;
-      color: #f0f0f0;
+    .section:last-of-type { border-bottom: none; }
+    .section-accent {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 44px;
+    }
+    .section-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 52px;
+      font-weight: 900;
+      color: #ebebeb;
       line-height: 1;
-      min-width: 52px;
-      padding-top: 2px;
     }
     .section-body { flex: 1; }
     .section h2 {
-      font-family: 'Oswald', sans-serif;
-      font-size: 20px;
-      font-weight: 600;
-      color: #05429d;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--blue);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
       margin-bottom: 12px;
     }
     .section p {
+      font-family: 'Barlow', sans-serif;
       font-size: 15px;
       color: #3a3a3a;
       line-height: 1.8;
       font-weight: 400;
     }
 
-    /* ─── Conclusion ─── */
-    .conclusion {
-      background: #000;
-      color: #fff;
+    /* ─── Conclusion Box ─── */
+    .conclusion-box {
+      background: var(--surface);
+      border-radius: 8px;
       padding: 36px 40px;
-      border-radius: 10px;
-      margin: 36px 0 32px;
-      border-left: 4px solid #ffd801;
+      margin: 36px 0 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .conclusion-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--yellow), var(--blue));
     }
     .conclusion-label {
-      font-family: 'Oswald', sans-serif;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.25em;
-      color: #ffd801;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      color: var(--yellow);
       text-transform: uppercase;
       margin-bottom: 14px;
     }
-    .conclusion p {
+    .conclusion-text {
+      font-family: 'Barlow', sans-serif;
       font-size: 15px;
-      color: #cccccc;
+      color: rgba(255,255,255,0.82);
       line-height: 1.8;
     }
 
     /* ─── Footer ─── */
     .article-footer {
       border-top: 2px solid #000;
-      padding-top: 20px;
+      padding-top: 22px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -284,25 +354,33 @@ function generateReportHTML(data: ReportData, date: string, generatedAt: string)
       flex-wrap: wrap;
     }
     .footer-source {
+      font-family: 'Barlow', sans-serif;
       font-size: 11px;
       color: #999;
-      line-height: 1.6;
-      max-width: 520px;
+      line-height: 1.7;
+      max-width: 500px;
     }
     .footer-source strong { color: #555; }
     .footer-brand {
-      font-family: 'Oswald', sans-serif;
-      font-size: 13px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px;
       color: #000;
-      font-weight: 600;
+      font-weight: 800;
       text-align: right;
       white-space: nowrap;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
-    .footer-brand .domain { color: #096cfe; font-size: 11px; }
+    .footer-brand .domain {
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
     .generated-at {
       width: 100%;
       font-size: 10px;
-      color: #ccc;
+      color: #bbb;
       padding-top: 10px;
       border-top: 1px solid #eee;
       margin-top: 10px;
@@ -310,20 +388,22 @@ function generateReportHTML(data: ReportData, date: string, generatedAt: string)
 
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .masthead, .hero, .stat-card, .conclusion { -webkit-print-color-adjust: exact; }
+      .masthead, .hero, .stat-card, .conclusion-box, .insight-banner {
+        -webkit-print-color-adjust: exact;
+      }
     }
   </style>
 </head>
 <body>
   <!-- Masthead -->
   <div class="masthead">
-    <div class="masthead-top">
-      <div>
+    <div class="masthead-inner">
+      <div class="brand-block">
         <div class="brand-name">Bali Business Club</div>
-        <div class="brand-sub">Market Intelligence Report</div>
+        <div class="brand-sub">Market Intelligence</div>
       </div>
-      <div class="masthead-meta">
-        <div class="section-label">Intelligence Report</div>
+      <div class="masthead-right">
+        <div class="report-type">Intelligence Report</div>
         <div class="pub-date">${date}</div>
       </div>
     </div>
@@ -331,30 +411,46 @@ function generateReportHTML(data: ReportData, date: string, generatedAt: string)
 
   <!-- Hero -->
   <div class="hero">
-    <div class="hero-category">BBC Intelligence</div>
-    <h1>${data.title}</h1>
-    <p class="hero-summary">${data.summary}</p>
-    <div class="hero-divider"></div>
+    <div class="hero-banner">
+      <div class="hero-banner-yellow"></div>
+      <div class="hero-banner-blue"></div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-tag">
+        <span class="hero-tag-pill">BBC Intelligence</span>
+        <span class="hero-tag-date">${date}</span>
+      </div>
+      <h1>${data.title}</h1>
+      <p class="hero-summary">${data.summary}</p>
+    </div>
   </div>
 
   <div class="container">
     <!-- Key Stats -->
     ${stats ? `
     <div class="stats-section">
-      <div class="stats-label">Key Data Points</div>
+      <div class="section-eyebrow">Key Data Points</div>
       <div class="stats-grid">${stats}</div>
     </div>` : ""}
 
-    <!-- Sections -->
+    <!-- Insight banner (summary as pull quote) -->
+    <div class="insight-banner">
+      <div class="insight-label">Executive Insight</div>
+      <div class="insight-text">${data.summary}</div>
+    </div>
+
+    <!-- Analysis Sections -->
     ${sections ? `
-    <div class="sections-header">In-Depth Analysis</div>
+    <div class="analysis-header">
+      <div class="section-eyebrow">In-Depth Analysis</div>
+    </div>
     ${sections}` : ""}
 
     <!-- Conclusion -->
     ${data.conclusion ? `
-    <div class="conclusion">
-      <div class="conclusion-label">Strategic Conclusion</div>
-      <p>${data.conclusion}</p>
+    <div class="conclusion-box">
+      <div class="conclusion-label">Strategic Outlook</div>
+      <div class="conclusion-text">${data.conclusion}</div>
     </div>` : ""}
 
     <!-- Footer -->
@@ -364,7 +460,7 @@ function generateReportHTML(data: ReportData, date: string, generatedAt: string)
         <div class="generated-at">Generated: ${generatedAt} · Bali Business Club Marketing Intelligence</div>
       </div>
       <div class="footer-brand">
-        BALI BUSINESS CLUB
+        Bali Business Club
         <div class="domain">balibusinessclub.com</div>
       </div>
     </div>

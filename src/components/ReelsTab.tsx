@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Session } from "@/lib/auth";
 import GenerateButton from "./GenerateButton";
 import ContentActions from "./ContentActions";
-import { Film, ChevronDown, ChevronUp, Clipboard, Check } from "lucide-react";
+import { Film, ChevronDown, ChevronUp, Clipboard, Check, ExternalLink } from "lucide-react";
 
 interface KeyFact {
   bold: string;
@@ -20,6 +20,8 @@ interface ReelData {
   cta?: string;
   script: string;
   duration: string;
+  sourceLabel?: string;
+  sourceUrl?: string;
   // legacy
   subtitle?: string;
   hooks?: string[];
@@ -209,7 +211,29 @@ export default function ReelsTab({ session: _session }: { session: Session }) {
                 </div>
               )}
 
-              <div className="px-4 py-3 flex items-center justify-between">
+              {/* Source attribution */}
+              {(data.sourceLabel || data.sourceUrl) && (
+                <div className="px-4 pb-2 pt-0">
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <span className="text-gray-600 uppercase tracking-wide">Source:</span>
+                    {data.sourceUrl ? (
+                      <a
+                        href={data.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#096cfe] hover:text-[#ffd801] transition-colors flex items-center gap-0.5 font-medium uppercase tracking-wide"
+                      >
+                        <ExternalLink size={9} />
+                        {data.sourceLabel ?? "View source"}
+                      </a>
+                    ) : (
+                      <span className="text-gray-500 uppercase tracking-wide">{data.sourceLabel}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="px-4 py-3 flex items-center justify-between border-t border-[#1a1a1a]">
                 <div className="flex flex-wrap gap-1">
                   {tags.map((t) => <span key={t} className="badge-gold text-[10px]">{t}</span>)}
                 </div>

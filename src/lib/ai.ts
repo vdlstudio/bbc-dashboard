@@ -96,7 +96,7 @@ Return ONLY valid JSON (no markdown, no code fences):
 export async function generateCarousel(topic?: string): Promise<{
   title: string;
   subtitle: string;
-  slides: Array<{ stat: string; label: string; detail: string; source: string }>;
+  slides: Array<{ stat: string; label: string; detail: string; source: string; sourceUrl?: string }>;
   caption: string;
   hashtags: string[];
   tags: string[];
@@ -123,6 +123,7 @@ SLIDE FORMAT (5-6 slides):
 - label: Short description of what the stat means (e.g. "Average occupancy rate in Q1 2025")
 - detail: One sentence adding context (e.g. "A 3.6% increase from Q1 2024 (61.2%)")
 - source: Source name (e.g. "Colliers International", "BPS Indonesia")
+- sourceUrl: REAL article URL where this data can be verified (use actual URLs like https://www.colliers.com/... or https://www.bps.go.id/... — must be a working article or report URL from 2025 or 2026)
 
 CAPTION FORMAT: Write an engaging Instagram caption with:
 - Emoji-rich title line
@@ -142,7 +143,8 @@ Return ONLY valid JSON (no markdown, no code fences):
       "stat": "63.4%",
       "label": "Average occupancy rate in Q1 2026",
       "detail": "A 3.6% increase from Q1 2025 (61.2%)",
-      "source": "Colliers International"
+      "source": "Colliers International",
+      "sourceUrl": "https://www.colliers.com/en-id/research/bali-hotel-market-report-2026"
     }
   ],
   "caption": "Full Instagram caption text with line breaks",
@@ -168,6 +170,8 @@ export async function generateReelScript(topic?: string): Promise<{
   closingQuestion: string;
   cta: string;
   duration: string;
+  sourceLabel: string;
+  sourceUrl: string;
   tags: string[];
 }> {
   const client = getClient();
@@ -209,6 +213,8 @@ Return ONLY valid JSON (no markdown, no code fences):
   "cta": "Call to action (e.g. 'Let us know in the comments below.')",
   "script": "Full readable script combining all elements, ready to be read on camera. Use natural spoken language.",
   "duration": "30s or 45s or 60s",
+  "sourceLabel": "Primary source name (e.g. 'BPS Indonesia', 'Colliers International', 'Airbnb Newsroom')",
+  "sourceUrl": "REAL URL to a 2025 or 2026 article/report that supports the key facts in this reel (must be a real, working URL)",
   "tags": ["tag1", "tag2", "tag3"]
 }`,
       },
