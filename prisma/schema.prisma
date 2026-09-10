@@ -79,3 +79,9 @@ model ScheduleLog {
   status  String
   message String   @default("")
 }
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

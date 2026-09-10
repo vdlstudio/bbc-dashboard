@@ -2,9 +2,8 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-// On Windows local dev, force absolute path for SQLite to work
-// On Railway/production, DATABASE_URL should already be set correctly
-if (process.platform === "win32" && !process.env.RAILWAY_ENVIRONMENT) {
+// On Windows local dev without a real DB URL, fall back to local SQLite
+if (process.platform === "win32" && !process.env.DATABASE_URL?.startsWith("postgres")) {
   process.env.DATABASE_URL = "file:C:/Users/vince/bbc.db";
 }
 

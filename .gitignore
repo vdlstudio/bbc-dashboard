@@ -1,8 +1,13 @@
 .next/
 node_modules/
 .env
+.env.*
+!.env.example
 *.db
 *.db-journal
 start.bat
 
 .vercel
+
+# Local Netlify folder
+.netlify
