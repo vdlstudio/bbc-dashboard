@@ -23,6 +23,7 @@ const envFallback = loadEnvFallback();
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  outputFileTracingRoot: path.resolve(__dirname),
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
