@@ -5,7 +5,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Upsert the main team user (idempotent — safe to run on every deploy)
-  const hash = await bcrypt.hash("ksgrocks2026!", 12);
+  const seedPassword = process.env.SEED_PASSWORD || "ksgrocks2026!";
+  const hash = await bcrypt.hash(seedPassword, 12);
   await prisma.user.upsert({
     where: { email: "ksgteam" },
     update: { password: hash, name: "KSG Team", role: "admin" },
@@ -17,7 +18,7 @@ async function main() {
     },
   });
 
-  console.log("✅ Seed complete. Login: ksgteam / ksgrocks2026!");
+  console.log("✅ Seed complete. Login: ksgteam / [password from SEED_PASSWORD env]");
 }
 
 main()
